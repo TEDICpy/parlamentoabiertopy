@@ -11,7 +11,8 @@ import unicodedata
 from bs4 import BeautifulSoup, CData
 from HTMLParser import HTMLParser
 
-import xml.etree.ElementTree as ET
+from request_content import committee_item_data
+
 
 application_x_www_form_urlencoded='application/x-www-form-urlencoded'
 headers = {}
@@ -41,7 +42,7 @@ class SilpyScrapper(object):
     def _create_connection(self):
         #conn = httplib.HTTPSConnection(host, port)
         conn = httplib.HTTPConnection(host, port)
-        conn.debuglevel = 5
+        conn.debuglevel = 0
         conn.connect()
         return conn
 
@@ -108,9 +109,9 @@ class SilpyScrapper(object):
         self.viewState =  input['value']
         
     def _extract_parlamentary_data(self, html):
-        #print html
         partial_soup = BeautifulSoup(html)
         cdata_contents = []
+        #widgets updates come insade a CDATA
         for cd in partial_soup.findAll(text=True):
             if isinstance(cd, CData):
                 cdata_contents.append(cd)
@@ -148,15 +149,29 @@ class SilpyScrapper(object):
                     committee = {'text': li.text.strip(), 'formMain': li.a['id']}
                     formMain = committee['formMain']+ '=' + committee['formMain']
                     #viewState = self.viewState # "-3644735490815418626%3A-2324997477277913544"
-                    body = 'javax.faces.ViewState='+ viewState + '&' + formMain
-                    print (committee['text'], body)
+                    appended_string = 'javax.faces.ViewState='+ viewState + '&' + formMain
+                    #print (committee['text'], appended_string)
                     committees.append(committee)
-
                     row['committees'] = committees
+                    #download data                    
+                    body = committee_item_data + appended_string
+                    response, data = self.list_projects_by_committee(body)
+                    
+                    #
+                    #TODO: improve calls, handle response
+                    #
+                    print data
+                    #print row['index'] + " - " + row['name'] +" - " + row['id']
+                    #print "##################################################################"
+                    
 
-                    print row['index'] + " - " + row['name'] +" - " + row['id']
-                    print "##################################################################"
-
+    def list_projects_by_committee(self, data):
+        headers = {}
+        headers["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        headers['Cookie'] = self.headers['Set-Cookie']
+        headers['Referer'] = "http://silpy.congreso.gov.py/main.pmf"
+        _url = '/formulario/ListarParlamentario.pmf'        
+        return self._execute_REST_call('POST', _url, data, headers, application_x_www_form_urlencoded)
 
     def init_session_values(self):
         #TODO: validate reponse status (decorate?)
@@ -198,11 +213,9 @@ class SilpyScrapper(object):
         headers['Content-Type'] = application_x_www_form_urlencoded
         headers["Accept"] = "application/xml, text/xml, */*; q=0.01"
         headers['Cookie'] = self.headers['Set-Cookie']
-        headers['Referer'] = "http://silpy.congreso.gov.py/mani.pmf"
+        headers['Referer'] = "http://silpy.congreso.gov.py/main.pmf"
         headers['Faces-Request'] = "partial/ajax"
         headers['X-Requested-With'] =  "XMLHttpRequest"
-        #headers[' Content-Length'] = "375"
-        #headers['Cookie: JSESSIONID=593c27ecb57cd585a2a6099c9fb2
         headers['Connection'] = "keep-alive"
         headers['Pragma'] = "no-cache"
         headers['Cache-Control'] = "no-cache"
@@ -217,48 +230,115 @@ class SilpyScrapper(object):
         # data = "javax.faces.partial.ajax%3Dtrue%26javax.faces.source%3DformMain%3AcmdBuscarParlamentario%26javax.faces.partial.execute%3D%40all%26javax.faces.partial.render%3DformMain%26formMain%3AcmdBuscarParlamentario%3DformMain%3AcmdBuscarParlamentario%26formMain%3DformMain%26formMain%3AidOrigen_input%3D"  + origin + "%26formMain%3AidPeriodoLegislativo_input%3D"+ period + "%26javax.faces.ViewState%3D" + self.viewState
         
         _url = '/formulario/ListarParlamentario.pmf'
-        return self._execute_REST_call('POST', _url, data, headers, application_x_www_form_urlencoded)
+        response, data = self._execute_REST_call('POST', _url, data, headers, application_x_www_form_urlencoded)
+#        self._extract_sesion_values(response, data)
+        return response, data
     
     def get_presented_projects(self, parlamentary_id):
         """ver proyectos presentados"""
         #TODO
-        parlamentary_id = '100064'
+        #parlamentary_id = '100064'
         _url = '/verProyectosParlamentario.pmf?q=verProyectosParlamentario%2F'+ parlamentary_id
         self._execute_REST_call('GET', _url, None, self.headers, application_x_www_form_urlencoded)
         
-    def _extract_integrated_committees(self):
-        pass
+    def projects_by_committee_extractor(self, html):
+        #TODO: discover which list is shown: "en estudio" o "dictaminados"
+        # invoke the alternate list and call this method again
+        stats = self._extract_statistics_table(html)
+        projects = self._extract_projects_by_committee(html)
+        return stats, projects
 
-    def _extract_appointments(self):
-        pass
+    def _extract_statistics_table(self, html):
+        #extracts data from the statistics table in resources/projects_by_committee.html
+        soup = BeautifulSoup(html)
+        committee_table = soup.find(id="formMain:panelComision")
+        committee = committee_table.tr.td.text
+        status = committee[committee.index('[')+1 : committee.index(']')]
+        statistics_div = soup.find(id="formMain:j_idt85")
+        #th_list = statistics_div.table.thead.find_all("th")
+        tr_list = statistics_div.table.tbody.find_all("tr")
+        statistics = []
+        for tr in tr_list:
+            td_list = tr.find_all("td")
+            values = {}
+            values["cantidad"] = td_list[0].text
+            values["estado"] = td_list[1].text 
+            statistics.append(values)
 
+        return statistics
         
-scrapper = SilpyScrapper()
-response, data = scrapper.init_session_values()
-response, data = scrapper.get_parlamentary_list('D')
-scrapper._extract_parlamentary_data(data)
-#print data
+    def _extract_projects_by_committee(self, html):
+        #extracts data from the results table in resources/projects_by_committee.html
+        soup = BeautifulSoup(html)
+        result_tbody = soup.find(id = "formMain:dataTable_data")
+        tr_list = result_tbody.find_all("tr")
+        projects = []
+        for tr in tr_list:
+            td_list = tr.find_all("td")
 
+            if td_list != None and len(td_list) > 0:
+                project = {}
+                td0 = td_list[0]
+                #td2 = td_list[2] #votacion??
+                if td0.div != None:
+                    project['description'] = td0.a.text
+                    project['data'] = td0.a['id']
+
+                span_list = td0.find_all('span')
+
+                if span_list != None and len(span_list) > 0:
+                    project['title'] = span_list[0].text.strip()
+                    texts_rows = span_list[1].text.split('\n')
+                    if len(texts_rows) > 1:#sometimes there are just counted comments
+
+                        entry_date, date = texts_rows[1].split(":")
+                        folder, id = texts_rows[3].split(":")
+                        project['ingreso'] = date.strip()
+                        project['expediente'] = id.strip()
+
+                        if len(texts_rows) >= 3: #there is also mensaje section
+                            subtable = span_list[1].table #texts_rows, len(texts_rows)
+                            trs = subtable.find_all("tr")
+                            for tr in trs:
+                                tr_spans = tr.find_all('span')
+                                if len(tr_spans) > 0:
+                                    messages = []
+                                    for span in tr_spans:
+                                        messages.append(span.text.replace("|", "").strip())
+                                    project['messages'] = messages
+
+                if len(td_list) > 3:
+                    td3 = td_list[3]
+                    td3_span_list = td3.find_all('span')
+                    for span in td3_span_list:
+                        span.text
+                    if len(td3_span_list) > 2:
+                        project['stage'] = {'camara': td3_span_list[0].text, td3_span_list[1].text : td3_span_list[2].text} 
+                if len(project) != 0:        
+                    projects.append(project)
+        return projects
+
+
+
+scrapper = SilpyScrapper()
+# response, data = scrapper.init_session_values()
+# response, data = scrapper.get_parlamentary_list('D')
+# scrapper._extract_parlamentary_data(data)
+#print data
 
 update_data = 'resources/buscar_parlamentarios_update.html'
 lista_parlamentarios = 'resources/lista_parlamentarios.html'
+projects_by_committee = 'resources/projects_by_committee.html'
 
 html = ''
-htmlfile = open(lista_parlamentarios)
+htmlfile = open(projects_by_committee)
 for l in htmlfile:
     html +=l 
-#print html
 
-#scrapper._extract_parlamentary_data(html)
+print scrapper.projects_by_committee_extractor(html)
+ 
 
-
-#print table_section.find("formMain:dataTable_data")
-#soup2 = BeautifulSoup(table_section)
-#tbody = soup2.find(id="formMain:dataTable_data")
-
-#_extract_parlamentary_data(table_section, "-3644735490815418626%3A-2324997477277913544")
-
-# def _updated_viewState(html):
+#def  _updated_viewState(html):
 #     soup = BeautifulSoup(html)
 #     #soup.find('partial-response')
 #     updates = soup.find_all('update')
