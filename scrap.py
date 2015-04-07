@@ -42,7 +42,7 @@ class SilpyScrapper(object):
     def _create_connection(self):
         #conn = httplib.HTTPSConnection(host, port)
         conn = httplib.HTTPConnection(host, port)
-        conn.debuglevel = 0
+        conn.debuglevel = 5
         conn.connect()
         return conn
 
@@ -199,7 +199,13 @@ class SilpyScrapper(object):
         headers = {}
         headers['Set-Cookie'] = self.headers['Set-Cookie']
         response, data = self._execute_REST_call('POST', '/formulario/ListarParlamentario.pmf', None, headers, application_x_www_form_urlencoded)
+        print "#################################"
+        print self.headers
+        print "#################################"
         self._extract_sesion_values(response, data)
+        print "#################################"
+        print self.headers
+        print "#################################"
         return response, data
 
     def get_parlamentary_list(self, origin):
@@ -321,21 +327,21 @@ class SilpyScrapper(object):
 
 
 scrapper = SilpyScrapper()
-# response, data = scrapper.init_session_values()
-# response, data = scrapper.get_parlamentary_list('D')
-# scrapper._extract_parlamentary_data(data)
+response, data = scrapper.init_session_values()
+response, data = scrapper.get_parlamentary_list('D')
+#scrapper._extract_parlamentary_data(data)
 #print data
 
-update_data = 'resources/buscar_parlamentarios_update.html'
-lista_parlamentarios = 'resources/lista_parlamentarios.html'
-projects_by_committee = 'resources/projects_by_committee.html'
+# update_data = 'resources/buscar_parlamentarios_update.html'
+# lista_parlamentarios = 'resources/lista_parlamentarios.html'
+# projects_by_committee = 'resources/projects_by_committee.html'
 
-html = ''
-htmlfile = open(projects_by_committee)
-for l in htmlfile:
-    html +=l 
+# html = ''
+# htmlfile = open(projects_by_committee)
+# for l in htmlfile:
+#     html +=l 
 
-print scrapper.projects_by_committee_extractor(html)
+# print scrapper.projects_by_committee_extractor(html)
  
 
 #def  _updated_viewState(html):
