@@ -76,7 +76,7 @@ class SilpyScrapper(object):
     def _create_connection(self):
         #conn = httplib.HTTPSConnection(host, port)
         conn = httplib.HTTPConnection(host, port)
-        conn.debuglevel = 5
+        conn.debuglevel = 0
         conn.connect()
         return conn
 
@@ -153,8 +153,6 @@ class SilpyScrapper(object):
                +"&formMain=formMain&formMain:idOrigen_input=" + origin + "&formMain:idPeriodoLegislativo_input=" + period \
                +"&javax.faces.ViewState=" + self.viewState 
 
-        # data = "javax.faces.partial.ajax%3Dtrue%26javax.faces.source%3DformMain%3AcmdBuscarParlamentario%26javax.faces.partial.execute%3D%40all%26javax.faces.partial.render%3DformMain%26formMain%3AcmdBuscarParlamentario%3DformMain%3AcmdBuscarParlamentario%26formMain%3DformMain%26formMain%3AidOrigen_input%3D"  + origin + "%26formMain%3AidPeriodoLegislativo_input%3D"+ period + "%26javax.faces.ViewState%3D" + self.viewState
-        
         _url = '/formulario/ListarParlamentario.pmf'
         response, data = self._execute_REST_call('POST', _url, data, headers, application_x_www_form_urlencoded)
 #        self._extract_sesion_values(response, data)
@@ -220,47 +218,41 @@ class SilpyScrapper(object):
         tbody = soup.find(id="formMain:dataTable_data")
         tr_list = tbody.find_all("tr")
         rows = []
-        row = {}
         str_images = '/images'
         for tr in tr_list:
             #this is a table, of course it has a fixed length
             #0 = row_id, incremental
-            #1 = img (we extract the parlamentary id from the image name
+            #1 = img (we extract the MP id from the image name
             #2 = name
             #3 = committees: div with list of divs
             #4 = projects: link using the extracted id from (2)
-
+            row = {}
             td_list = tr.find_all("td")
             row['index'] = td_list[0].text.strip()
             row['name'] = td_list[2].text.strip()
-            row['projects'] = td_list[4].text.strip()
+            row['projects_body_param'] = td_list[4].text.strip() #parameter to invoke projects 
             row_index = int(row['index'])-1
-            #extraction of parlamentary id
+            #extraction of MP id
             src = td_list[1].div.img['src']
             if str_images in src:
+                #TODO: download img!
                 row['id'] = src[len(str_images)+1: len(src)].replace('.jpg','')
-
                 #extraction of formMain
+                #formMain goes in the following request to get
+                # committee details  list_projects_by_committee(body_param)
                 lis = td_list[3].div.div.find_all("li")
                 committees = []
                 for li in lis:
-                    committee = {'text': li.text.strip(), 'formMain': li.a['id']}
-                    formMain = committee['formMain']+ '=' + committee['formMain']
-                    #viewState = self.viewState # "-3644735490815418626%3A-2324997477277913544"
-                    appended_string = 'javax.faces.ViewState='+ viewState + '&' + formMain
-                    #print (committee['text'], appended_string)
+                    formMain = li.a['id']
+                    formMain2 = formMain + '=' + formMain
+                    appended_string = 'javax.faces.ViewState='+ viewState + '&' + formMain2
+                    committee = {'text': li.text.strip(), 'body_param': appended_string}               
                     committees.append(committee)
-                    row['committees'] = committees
-                    #download data                    
-                    body = committee_item_data + appended_string
-                    response, data = self.list_projects_by_committee(body)
-                    
-                    #
-                    #TODO: improve calls, handle response
-                    #
-                    print data
-                    #print row['index'] + " - " + row['name'] +" - " + row['id']
-                    #print "##################################################################"
+                row['committees'] = committees
+                    #print committee['text']
+                    #row['list_projects_by_committee'] = appended_string
+            rows.append(row)
+        return rows
 
     def _extract_statistics_table(self, html):
         #extracts data from the statistics table in resources/projects_by_committee.html
@@ -334,12 +326,36 @@ class SilpyScrapper(object):
         return projects
 
 
+#######################
+### MainApp Section ###
+#######################
 
 scrapper = SilpyScrapper()
 response, data = scrapper.init_session_values()
 response, data = scrapper.get_parlamentary_list('D')
-scrapper._extract_parlamentary_data(data)
-print data
+rows = scrapper._extract_parlamentary_data(data)
+
+
+from db import Session, Parlamentario, Camara
+
+session = Session()
+
+camara_diputados = Camara(id=1, nombre='Diputados', periodo='2013-2018')
+camara_senadors = Camara(id=2, nombre='Senadores', periodo='2013-2018')
+
+for r in rows:
+    parlamentario = Parlamentario(id=r['id'], nombre=r['name'])
+    parlamentario.camaras = [camara_diputados]
+    # committees = r['committees']
+    # projects = r['projects']
+
+    # for c in committees:
+    #     print c['text']
+
+    session.add(parlamentario)
+session.commit()
+
+#print data
 
 # update_data = 'resources/buscar_parlamentarios_update.html'
 # lista_parlamentarios = 'resources/lista_parlamentarios.html'
