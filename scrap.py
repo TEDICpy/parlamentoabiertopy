@@ -194,35 +194,6 @@ class SilpyScrapper(object):
                 headers_dict[key.strip()] = val.strip()
         return headers_dict
     
-    @DeprecationWarning
-    def _extract_parlamentary_ids(self, html):
-        """parlamentary id are contained on the images
-           in the form of images/<id>.jpg
-           returns a list of ids 
-        """
-    # TEST CODE #
-        html = ''
-        listarParlamentario = open('resources/lista_parlamentarios.html')
-        for l in listarParlamentario:
-            html +=l 
-    # END TEST CODE #
-        ids = []
-        soup = BeautifulSoup(html)
-        all_img = soup.find_all('img')
-        str_images = '/images'
-        
-        for img in all_img:
-            src = img['src']
-            if str_images in src:
-                ids.append(src[len(str_images)+1: len(src)].replace('.jpg',''))
-        return ids
-
-    def _download_attachment(self):
-        #TODO:
-        # content = 'formMain=formMain&formMain%3AdataTableDetalle%3A0%3Aj_idt178=&javax.faces.ViewState=-3644735490815418626%3A-2324997477277913544'
-        # return self._execute_REST_call('POST', '/formulario/VerDetalleTramitacion.pmf', content, headers, application_x_www_form_urlencoded)
-        pass
-
     def _extract_sesion_values(self, response, data):
         self.headers = self._extract_response_headers(response.msg.headers)
 
