@@ -30,6 +30,40 @@ base_url = 'http://sil2py.senado.gov.py'
 # base_url = "http://localhost:9999"
 port= 80
 
+class updateViewState(object):
+
+    def __init__(self, f):
+        self.f = f
+
+    def __call__(self, *args, **kwargs):
+        self.clss = args[0]
+        html = ''
+        try:
+            html =  kwargs['html']
+        except:
+            raise Exception("The decorated method must be invoked with an 'html' named parameter.")
+
+        self._updated_viewState(html)
+        self.f(*args, **kwargs)
+            
+    def __get__(self, obj, objtype):
+        return functools.partial(self.__call__, obj)
+
+    def _updated_viewState(self, html):
+        #viewStates might be embbedded inside <input> or <update> 
+        #and it changes according to the navigation
+        soup = BeautifulSoup(html)
+        viewState_container = soup.find(id="javax.faces.ViewState")
+        viewState = None
+        if viewState_container.name == 'input': 
+            viewState = viewState_container['value']
+        elif viewState_container.name == 'update':
+            viewstate = viewState_container.text 
+        
+        if self.clss.viewState != viewState:
+            print "replacing viewstates: oldval: " + self.clss.viewState + ' | newval: ' +viewState
+            self.clss.viewState = viewState
+
 
 class SilpyScrapper(object):
     """
@@ -107,7 +141,8 @@ class SilpyScrapper(object):
         soup = BeautifulSoup(data)
         input = soup.find(id='javax.faces.ViewState')
         self.viewState =  input['value']
-        
+      
+    #@updateViewState
     def _extract_parlamentary_data(self, html):
         partial_soup = BeautifulSoup(html)
         cdata_contents = []
@@ -199,13 +234,7 @@ class SilpyScrapper(object):
         headers = {}
         headers['Set-Cookie'] = self.headers['Set-Cookie']
         response, data = self._execute_REST_call('POST', '/formulario/ListarParlamentario.pmf', None, headers, application_x_www_form_urlencoded)
-        print "#################################"
-        print self.headers
-        print "#################################"
         self._extract_sesion_values(response, data)
-        print "#################################"
-        print self.headers
-        print "#################################"
         return response, data
 
     def get_parlamentary_list(self, origin):
@@ -272,7 +301,8 @@ class SilpyScrapper(object):
             statistics.append(values)
 
         return statistics
-        
+
+    @updateViewState
     def _extract_projects_by_committee(self, html):
         #extracts data from the results table in resources/projects_by_committee.html
         soup = BeautifulSoup(html)
@@ -329,8 +359,8 @@ class SilpyScrapper(object):
 scrapper = SilpyScrapper()
 response, data = scrapper.init_session_values()
 response, data = scrapper.get_parlamentary_list('D')
-#scrapper._extract_parlamentary_data(data)
-#print data
+scrapper._extract_parlamentary_data(data)
+print data
 
 # update_data = 'resources/buscar_parlamentarios_update.html'
 # lista_parlamentarios = 'resources/lista_parlamentarios.html'
