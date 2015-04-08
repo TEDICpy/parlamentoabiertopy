@@ -47,7 +47,7 @@ class Comision(Base):
 
 class Proyecto(Base):
     __tablename__ = 'projecto'
-    
+#    'description', 'title', 'expediente', 'data', 'ingreso', 'stage'
     id = Column(Integer, primary_key=True)
     name = Column(String)
 
