@@ -5,9 +5,6 @@ BeautifulSoup4
 SQLAlchemy-0.9.9
 Selemium
 
-Firefox Running Headless
-http://www.installationpage.com/selenium/how-to-run-selenium-headless-firefox-in-ubuntu/
-
 Installation
 ----------------
 1. Create python and activate virtual environment
@@ -18,9 +15,6 @@ source /<path to dir>/venv/bin/activate
 pip install beautifulsoup4
 pip install SQLAlchemy-0.9.9
 pip install selenium
-
-sudo apt-get install firefox
-sudo apt-get install xvfb
 
 
 
