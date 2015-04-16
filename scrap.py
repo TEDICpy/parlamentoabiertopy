@@ -324,12 +324,16 @@ class SilpyScrapper(object):
 #######################
 ### MainApp Section ###
 #######################
+from mongo_db import SilpyClient
 parser = SilpyHTMLParser()
 scrapper = SilpyScrapper()
+sc = SilpyClient()
+
 data = scrapper.get_parlamentary_list('D')
 rows = parser._extract_parlamentary_data(data)
 
-print rows
+result = sc.save_projects(rows)
+print result
 
 # from db import Session, Parlamentario, Camara
 # session = Session()
@@ -351,7 +355,7 @@ print rows
 
 
 # update_data = 'resources/buscar_parlamentarios_update.html'
-lista_parlamentarios = 'resources/lista_parlamentarios.html'
+#lista_parlamentarios = 'resources/lista_parlamentarios.html'
 # projects_by_committee = 'resources/projects_by_committee.html'
 
 # html = ''
