@@ -131,7 +131,6 @@ class SilpyHTMLParser(object):
             rows.append(row)
         return rows
 
-
     #quiza ni necesitamos ya que podemos quitar las estadisticas localmente
     def _extract_statistics_table(self, html):
         #extracts data from the statistics table in resources/projects_by_committee.html
@@ -348,7 +347,6 @@ class SilpyHTMLParser(object):
         projects = self._extract_projects_by_committee(html=data)
         return stats, projects
 
-
     def number_of_rows_found(self, html):
         #numero de registros encontrados en la tabla
         #aparentemente se utiliza la misma clase css en diferentes tablas
@@ -367,7 +365,7 @@ from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.by import By
 
-class SilpyScrapper(object):
+class SilpyNavigator(object):
     """
     Naviagation Flow for 
     """
@@ -408,8 +406,8 @@ class SilpyScrapper(object):
         
         # wait for th class? Yes
         #WARNING: this is a bug
-        # la clase .ui-widget-content.ui-datatable-even puede ser even u odd dependiendo de la cantidad
-        #usar data-ri en vez de css ?
+        # the css class .ui-widget-content.ui-datatable-even can be even or odd depending on the number of rows
+        #use 'data-ri' instead of css ?
         self.make_webdriver_wait(By.CSS_SELECTOR, '.ui-widget-content.ui-datatable-even')#".ui-datatable-header.ui-widget-header")
         number_of_rows = parser.number_of_rows_found(self.browser.page_source) #extraemos la cantidad de registros encontrados
         #esperamos por la ultima aparicion del registro en base a su css
@@ -490,73 +488,40 @@ class SilpyScrapper(object):
 #######################
 ### MainApp Section ###
 #######################
-#from mongo_db import SilpyMongoClient
-parser = SilpyHTMLParser()
-#scrapper = SilpyScrapper()
-#sc = SilpyMongoClient()
+from mongo_db import SilpyMongoClient
 
-# comisiones_periodo = scrapper.buscar_comisiones_por_periodo()
-# print sc.save_comisiones_por_periodo('2014-2015',comisiones_periodo)
+class SilpyScrapper(object):
 
-# data = scrapper.get_parlamentary_list('D')
-# rows = parser._extract_parlamentary_data(data)
+    def __init__(self):   
+        self.navigator = SilpyNavigator()
+        self.parser = SilpyHTMLParser()
+        self.mongo_client = SilpyMongoClient()
 
-# # #guarda los proyectos por parlamentario
-# result = sc.save_projects(rows)
-# for info_parlamentario in rows:
-#     comisiones = info_parlamentario['committees']
-#     for comision in comisiones:
-#         js_call = comision['js_call']       
-#         proyectos_comision_html = scrapper.list_projects_by_committee(js_call)        
-#         #recorrer todos las comisiones en que participaron los legisladores
-#         #hacer una lista unica de comisiones
-#         #recorrer la lista e ir bajando los proyectos
-#         #cada vez que se baja un proyecto se tiene que volver a la pagina anterior
+    def get_parlamentary_list(self):
+        data = self.navigator.get_parlamentary_list('D')
+        rows = self.parser._extract_parlamentary_data(data)
+        self.mongo_client.save_senadores(rows)
         
-#         #el resultado de js_call meter a este 
-#         # metodo        
-#         estadisticas, proyectos = scrapper.process_projects_by_committee(proyectos_comision_html)
-#         print estadisticas
-
-#obtencion de una llamada para el siguiente paso
-
-#iterar por proyectos
-#obtener la lista de comisiones
-#iterar sobre las comisiones
-#llamar obtener el atributo js_call
-#invocar al javascritp js_call
-#pasar el resultado al metodo process_projects_by_committee
-
-#projects.find_one({'index': '4'})['committees'][0]['js_call']
+     def get_commiittees_by_period(self):
+         periodo = '2014-2015'
+         comisiones_periodo = self.navigator.buscar_comisiones_por_periodo()
+         self.mongo_client.save_comisiones_por_periodo(periodo, comisiones_periodo)
+        
 
 
-# from db import Session, Parlamentario, Camara
-# session = Session()
-# camara_diputados = Camara(id=1, nombre='Diputados', periodo='2013-2018')
-# camara_senadors = Camara(id=2, nombre='Senadores', periodo='2013-2018')
-# for r in rows:
-#     #parlamentario = Parlamentario(id=r['id'], nombre=r['name'])
-#     #parlamentario.camaras = [camara_diputados]
-#     committees = r['committees']
-#     print r['name']
-
-#     for c in committees:
-#         appended_string = c['body_param']
-#         body_param = committee_item_data + appended_string        
-#         stats, projects = scrapper.process_projects_by_committee(body_param)        
-
-#     session.add(parlamentario)
-# session.commit()
+#############
+##TEST CODE## 
+#############
 
 # update_data = 'resources/buscar_parlamentarios_update.html'
 #lista_parlamentarios = 'resources/lista_parlamentarios.html'
 # projects_by_committee = 'resources/projects_by_committee.html'
 
-filename = 'resources/informacion_proyecto.html'
+# filename = 'resources/informacion_proyecto.html'
 
-from utils import *
-html = read_file_as_string(filename)
+# from utils import *
+# html = read_file_as_string(filename)
 
-tramitaciones = parser.extraccion_de_informacion_de_proyecto(html)
-for t in tramitaciones:
-    print t['etapa']
+# tramitaciones = parser.extraccion_de_informacion_de_proyecto(html)
+# for t in tramitaciones:
+#     print t['etapa']
