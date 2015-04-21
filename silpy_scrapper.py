@@ -64,13 +64,6 @@ class updateViewState(object):
 
 class SilpyHTMLParser(object):
 
-##################################
-# HTML Parser Section
-#
-# As for now rest call code and html parsing ar too mixed, 
-# refactoring needed 
-##################################
-
     def extraer_items_menu(self, html):
         #retorna un diccionario con los
         #items del menu principal
@@ -283,6 +276,57 @@ class SilpyHTMLParser(object):
             comisiones.append(comision)
         return comisiones
 
+    def extraccion_de_informacion_de_proyecto(self, html):
+        soup = BeautifulSoup(html)
+        info_div = soup.find(id='formMain:j_idt81_content')
+        
+        #informacion del proyecto
+        info = {}
+        info['expediente'] = info_div.find(id='formMain:expedienteCamara').text.strip()
+        info['tipo'] = info_div.find(id='formMain:idTipoProyecto').text.strip()
+        info['materia'] = info_div.find(id='formMain:idMateria').text.strip()
+        info['urgencia'] = info_div.find(id='formMain:idUrgencia').text.strip()
+        info['fecha_ingreso'] = info_div.find(id='formMain:fechaIngreso').text.strip()
+        info['iniciativa'] = info_div.find(id='formMain:idTipoIniciativa').text.strip()
+        info['origen'] = info_div.find(id='formMain:idOrigen').text.strip()
+        info['mensaje_pe'] =info_div.find(id='formMain:numeroMensaje').text.strip()
+        info['acapite'] =info_div.find(id='formMain:acapite').text.strip()
+
+        #'Etapa de la Tramitación'
+        etapa = {}
+        etapas_table = soup.find(id='formMain:panelEtapas')
+        etapa['etapa'] = etapas_table.find(id='formMain:idEtapaProy').text.strip()
+        etapa['sub_etapa'] = etapas_table.find(id='formMain:idSubEtapaProy').text.strip()
+        etapa['estado'] = etapas_table.find(id='formMain:idEstadoProyecto').text.strip()
+
+        #detalle de tramitacion
+        tbody_content = soup.find(id='formMain:dataTableTramitacion_data')
+        tr_list = tbody_content.find_all('tr', recursive=False)
+
+        tramitaciones = []
+        for tr in tr_list:
+            tramitacion = {}
+            td_list = tr.find_all('td')
+
+            tramitacion['index'] = td_list[0].text.strip()
+            tramitacion['sesion'] = td_list[1].text.strip()
+            tramitacion['fecha'] = td_list[2].text.strip()
+
+            #TODO: extraccion de etapa se puede generalizar
+            if len(td_list) >= 1:
+                td1 = td_list[3]
+                td1_span_list = td1.find_all('span')
+                #print "td1_span_list " + str(td1_span_list)
+                if len(td1_span_list) > 1:
+                    tramitacion['etapa'] = {'camara': td1_span_list[0].text, td1_span_list[1].text : td1_span_list[2].text} 
+
+            #Resultado
+            #TODO: todo esto es un kilombo, aqui hay de todo
+            tramitacion['resultado'] = td_list[4]
+            tramitaciones.append(tramitacion)
+
+        return tramitaciones
+       
     def extraer_miembros_por_comision(self, html):
         soup = BeautifulSoup(html)
         miembros_div = soup.find('div', {'class' : 'ui-datatable-scrollable-body'})
@@ -508,13 +552,11 @@ parser = SilpyHTMLParser()
 #lista_parlamentarios = 'resources/lista_parlamentarios.html'
 # projects_by_committee = 'resources/projects_by_committee.html'
 
-filename = 'resources/proyectos_en_comision.html'
+filename = 'resources/informacion_proyecto.html'
 
 from utils import *
 html = read_file_as_string(filename)
-soup = BeautifulSoup(html)
-#stats = parser._extract_statistics_table(html=html)
-stats, projects = parser.procesar_proyectos_por_comite(html)
 
-for p in projects:
-    print p['id']
+tramitaciones = parser.extraccion_de_informacion_de_proyecto(html)
+for t in tramitaciones:
+    print t['etapa']
