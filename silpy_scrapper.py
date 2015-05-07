@@ -409,7 +409,7 @@ class SilpyNavigator(object):
         # the css class .ui-widget-content.ui-datatable-even can be even or odd depending on the number of rows
         #use 'data-ri' instead of css ?
         self.make_webdriver_wait(By.CSS_SELECTOR, '.ui-widget-content.ui-datatable-even')#".ui-datatable-header.ui-widget-header")
-        number_of_rows = parser.number_of_rows_found(self.browser.page_source) #extraemos la cantidad de registros encontrados
+        number_of_rows = self.parser.number_of_rows_found(self.browser.page_source) #extraemos la cantidad de registros encontrados
         #esperamos por la ultima aparicion del registro en base a su css
         last_row_id = "formMain:dataTable:%s:j_idt92" %(str(number_of_rows - 1))
         self.make_webdriver_wait(By.ID, last_row_id)
@@ -457,7 +457,7 @@ class SilpyNavigator(object):
             time.sleep(2)
             miembros = self.parser.extraer_miembros_por_comision(self.browser.page_source)
             c['miembros'] = miembros
-         
+            
         return comisiones
 
     def obtener_detalle_de_proyecto(self, proyecto_id):
@@ -479,8 +479,8 @@ class SilpyNavigator(object):
         #TODO:invoke js_call from data dictionary
         self.browser.execute_script(js_call)
         #count rows and wait for the last one
-        number_of_rows = parser.number_of_rows_found(self.browser.page_source)
-        last_row_id = 'formMain:dataTable:%s:acapite' %(number_of_rows - 1)        
+        number_of_rows = self.parser.number_of_rows_found(self.browser.page_source)
+        last_row_id = 'formMain:dataTable:%s:acapite' %(number_of_rows - 1)    
         self.make_webdriver_wait(By.ID,last_row_id)
         return self.browser.page_source
             
@@ -498,11 +498,11 @@ class SilpyScrapper(object):
         self.mongo_client = SilpyMongoClient()
 
     def get_parlamentary_list(self):
-        data = self.navigator.get_parlamentary_list('D')
+        data = self.navigator.get_parlamentary_list('S')
         rows = self.parser._extract_parlamentary_data(data)
         self.mongo_client.save_senadores(rows)
         
-     def get_commiittees_by_period(self):
+    def get_commiittees_by_period(self):
          periodo = '2014-2015'
          comisiones_periodo = self.navigator.buscar_comisiones_por_periodo()
          self.mongo_client.save_comisiones_por_periodo(periodo, comisiones_periodo)
@@ -513,6 +513,9 @@ class SilpyScrapper(object):
 ##TEST CODE## 
 #############
 
+sc = SilpyScrapper()
+sc.get_parlamentary_list()
+sc.get_commiittees_by_period()
 # update_data = 'resources/buscar_parlamentarios_update.html'
 #lista_parlamentarios = 'resources/lista_parlamentarios.html'
 # projects_by_committee = 'resources/projects_by_committee.html'
