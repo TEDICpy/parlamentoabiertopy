@@ -16,6 +16,7 @@ import time
 from request_content import committee_item_data
 
 import hashlib 
+import utils
 
 def write_html(html):
 
@@ -176,7 +177,7 @@ class SilpyHTMLParser(object):
             if td_list != None and len(td_list) > 0:
                 project = {}
                 td0 = td_list[0]
-                #td2 = td_list[2] #votacion??
+
                 if td0.div != None:
                     project['titulo'] = td0.a.text                   
                 span_list = td0.find_all('span')
@@ -358,7 +359,6 @@ class SilpyHTMLParser(object):
         return int(number_of_rows.strip())
 
 
-from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
@@ -372,7 +372,7 @@ class SilpyNavigator(object):
 
     def __init__(self):
         self.parser = SilpyHTMLParser()
-        self.browser = webdriver.Firefox()
+        self.browser = utils.get_new_browser()
         self.browser.get("http://silpy.congreso.gov.py/main.pmf")
                                
     def make_webdriver_wait(self, by, waited_element):

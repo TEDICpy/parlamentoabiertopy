@@ -4,6 +4,7 @@ python 2.7
 BeautifulSoup4
 SQLAlchemy-0.9.9
 Selemium
+PhantomJS
 
 Installation
 ----------------
@@ -16,6 +17,9 @@ pip install beautifulsoup4
 pip install SQLAlchemy-0.9.9
 pip install selenium
 
+2.1 Install PhantomJS
+Follow the instructions from:
+    https://gist.github.com/julionc/7476620#file-install_phantomjs-sh
 
 
 Running
