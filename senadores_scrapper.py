@@ -10,7 +10,8 @@ import urllib
 import unicodedata
 from bs4 import BeautifulSoup
 
-from utils import *
+import utils
+           
                     
 application_x_www_form_urlencoded='application/x-www-form-urlencoded'
 headers = {}
@@ -59,29 +60,12 @@ class SenadoresParser(object):
 
         return senators
         
-    def parese_senator_info(self):
+    def parse_senator_info(self, data):
         projects = []
-        soup = BeautifulSoup(self.actividad)
+        soup = BeautifulSoup(data)
         cv = soup.find(id = '2-1-curriculum-vitae')#save as chunk of data?
+        return str(cv)
         
-        # table2  = soup.find('table', {'class': 'table2'})
-        # table_projects = soup.find(id = '2-3-proyectos-presentados')
-        # tr_list = table_projects.find_all('tr')
-        # tr_list = tr_list[1 : len(tr_list)] #remove header
-        # for tr in tr_list:
-        #    # project_td = pr.find_all('td')
-        #     td_list = tr.find_all('td')
-        #     project = {}
-        #     date_text = td_list[0].text
-        #     project['date'] = date_text[: date_text.index('.'):-1].strip()[::-1]
-        #     project['folder'] = td_list[1].text.strip()
-        #     project_column = td_list[2].text
-        #     project['name'] = project_column[:project_column.index('\n')]
-        #     project['details'] = project_column[ :project_column.index('\n'): -1][::-1].strip()
-        #     projects.append(project)
- 
-        # return projects
-
     def parse_senator_committees(self, html):      
         soup = BeautifulSoup(html)
         div_committees = soup.find(id = '2-5-comisiones')
@@ -114,7 +98,8 @@ class SenadoresParser(object):
             actividad['expediente'] = td_list[1].text.strip()
             acapite = td_list[2].text.strip()
             new_line = acapite.index('\n')
-            actividad['acapite'] = {'titulo':acapite[0:new_line].strip() , 'detalle':acapite[new_line:].strip()}
+            actividad['acapite'] = {'titulo':acapite[0:new_line].strip() , 
+                                    'detalle':acapite[new_line:].strip()}
             actividades.append(actividad)
         
         return actividades
@@ -157,7 +142,7 @@ class SenadoresScrapper(object):
     def __init__(self):
         self.mongo = SilpyMongoClient()
         self.parser = SenadoresParser()
-        self.browser = webdriver.Firefox()
+        self.browser = utils.get_new_browser()
         self.browser.get("http://www.senado.gov.py/")
 
     def make_webdriver_wait(self, by, waited_element):
@@ -180,7 +165,7 @@ class SenadoresScrapper(object):
     def _wait_document_ready(self, something):
         print something
         is_complete = self.browser.execute_script("return document.readyState;")
-        if ( is_complete == "complete"):
+        if (is_complete == "complete"):
             return True
         
     def obtener_info_de_senador(self, id):
@@ -194,32 +179,51 @@ class SenadoresScrapper(object):
         committees = self.parser.parse_senator_committees(data)
         #TODO: extract dictamenes
         dictamenes = self.parser.parse_dictamenes(data)
+        cv_raw = self.parser.parse_senator_info(data)
         # self.browser.get(url_proyectos)
         # self.make_webdriver_wait(By.CLASS_NAME, "IN-widget")
         # wait = WebDriverWait(self.browser, 15)
         # wait.until(self._wait_document_ready, "Loaded")
         #data = self.browser.page_source
-        
+        print 'Guardando info de senador %s' %(id)
         proyectos = self.parser.parse_senator_presented_projects(data)
         result = self.mongo.update_senador({'id':id, 'proyectos': proyectos,
                                             'committees': committees,
-                                            'dictamenes': dictamenes})
+                                            'dictamenes': dictamenes,
+                                            'cv_raw': cv_raw})
+        
         print result
 
     def extract_senators_data(self):
         senadores = self.obtener_lista_de_senadores()
         for s in senadores:
             self.obtener_info_de_senador(s['id'])
-                                
+            break
+
     def obtener_dictamenes_de_senador(self, id):
         #id_parla
         #los dictamenes de cada senador se cargan al llamar al tab de dictamenes
         url = 'http://www.senado.gov.py/index.php/lista-de-curriculum/68-curriculum?id_parla=100056#2-6-dict%C3%A1menes'
 
-
 parser = SenadoresParser()
-scrapper = SenadoresScrapper()
-# scrapper.obtener_lista_de_senadores()
-scrapper.extract_senators_data()
+#scrapper = SenadoresScrapper()
+#scrapper.extract_senators_data()
 #obtener la lista de la base de datos y llamar al siguiente metodo
-#html = read_file_as_string('resources/senadores/actividad_legislativa.html')
+html = utils.read_file_as_string('resources/senadores/sesion.html')
+soup = BeautifulSoup(html)
+# main_tabs = soup.find(id="formMain:j_idt98")
+# li_list = main_tabs.ul.find_all('li', recursive=False)
+# tabl_panels = soup.find('div', {'class' : 'ui-tabs-panels'})
+
+#this is not vaild, session are only reachable through silpy
+# container= 'formMain:j_idt98:'#the parent container
+# #the subsections with the actual data of each tab
+# sections_names = ['diarioSesion', 'asuntosEntrados', 'ordenDia', 'acta', 'resultadoSesion']
+# sections = {}
+# for section in sections_names:
+#     current = soup.find(id=container+section)
+#     sections[section] = current
+
+# print sections
+
+
