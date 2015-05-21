@@ -2,8 +2,7 @@ from pymongo import MongoClient
 
 client = MongoClient('localhost', 27017)
 
-class SilpyMongoClient(object):
-    
+class SilpyMongoClient(object):    
 
     def __init__(self):
         #connect to the database
@@ -23,13 +22,13 @@ class SilpyMongoClient(object):
         db_senadores = self.db.senadores
         results = []
         for senador in senadores:
-            result = db_senadores.update({'id':senador['id']}, {'$set':senador})
+            result = db_senadores.update({'id':senador['id']}, {'$set':senador}, True)
             results.append(result)
         return results
 
     def update_senador(self, senador):
         db_senadores = self.db.senadores
-        result = db_senadores.update({'id':senador['id']}, {'$set':senador})
+        result = db_senadores.update({'id':senador['id']}, {'$set':senador}, True)
         return result
 
     def save_comisiones_por_periodo(self, periodo, comisiones):
