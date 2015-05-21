@@ -78,21 +78,12 @@ class SilpyHTMLParser(object):
                 menu[i.text] = i.a['onclick']
         return menu
           
-    def _extract_parlamentary_data(self, html):
+    def parse_parlamentary_data(self, html):
         #TODO:extract designaciones 
         #http://silpy.congreso.gov.py/formulario/VerDetalleTramitacion.pmf?q=VerDetalleTramitacionVerDetalleTramitacion%2F101470
         partial_soup = BeautifulSoup(html)
-    #    cdata_contents = []
-    #        widgets updates come insade a CDATA
-        # for cd in partial_soup.findAll(text=True):
-        #     if isinstance(cd, CData):
-        #         cdata_contents.append(cd)
-        # table_section = cdata_contents[0]
-        # viewState = cdata_contents[1]
-        
         soup = BeautifulSoup(html)
         tbody = soup.find(id="formMain:dataTable_data")
-
         tr_list = tbody.find_all("tr")
         rows = []
         str_images = '/images'
@@ -113,24 +104,50 @@ class SilpyHTMLParser(object):
             src = td_list[1].div.img['src']
             if str_images in src:
                 #TODO: download img!
+                #http://sil2py.senado.gov.py/images/100081.jpg
                 row['id'] = src[len(str_images)+1: len(src)].replace('.jpg','')
                 #extraction of formMain
                 #formMain goes in the following request to get
                 # committee details  list_projects_by_committee(body_param)
-                lis = td_list[3].div.div.find_all("li")
+                #lis = td_list[3].div.div.find_all("li")
+                #work_div contains two subdivs, one for projects and the other 
+                #for designations 
+                work_divs = td_list[3].div.find_all('div', recursive=False)
+                print work_divs
+                committees_lis = work_divs[0].find_all("li")
                 committees = []
-                for li in lis:
-                    #TODO: extract js from anchor
-                    # formMain = li.a['id']
-                    # formMain2 = formMain + '=' + formMain
-                    # appended_string = 'javax.faces.ViewState='+ viewState + '&' + formMain2
+                for li in committees_lis:
                     js_call = li.a['onclick']
-                    committee = {'text': li.text.strip(), 'js_call': js_call}               
+                    committee = {'text': li.text.strip(), 'js_call': js_call}
                     committees.append(committee)
                 row['committees'] = committees
-                    
+                #designation extraction
+                #apparently not all rows have a designations div
+                if len(work_divs) > 1:
+                    designation_lis = work_divs[1].find_all("li")
+                    designations = []
+                    for li in designation_lis:                         
+                        js_call = li.a['onclick']
+                        designation = {'text': li.text.strip(), 'js_call': js_call}
+                        designations.append(designation)
+                        print designations
+                    row['designations'] = designations
             rows.append(row)
+            
         return rows
+
+    def parse_projects_by_parlamentary(self, html):
+        soup = BeautifulSoup(html)
+        #this tbody contains the actual data from the html comming from
+        #http://sil2py.senado.gov.py/formulario/verProyectosParlamentario.pmf?q=verProyectosParlamentario%2F100081
+        #the id increments for each section
+        #TODO: count sections?
+        projects = []
+        for i in range(0,4):
+            id="formMain:j_idt90:%i:dataTable_data" %(i)
+            tbody=soup.find(id=id)
+            projects.append(parser.parsear_lista_de_proyectos(tbody))
+        return projects
 
     #quiza ni necesitamos ya que podemos quitar las estadisticas localmente
     def _extract_statistics_table(self, html):
@@ -190,20 +207,17 @@ class SilpyHTMLParser(object):
                     #id=1112
                     # El link al detalle de tramitacion seria:
                     #silpy.congreso.gov.py/formulario/VerDetalleTramitacion.pmf?q=VerDetalleTramitacion%2F1112
-
                     subtables = span_list[1].find_all('table')
                     last_table = subtables[len(subtables) - 1] #la tabla con la imagen del tipito con el altoparlante
                     id = last_table.tbody.td.a['href'][::-1]
                     id = id[:id.index('%') - 2][::-1]
                     project['id'] = id
                     
-                    if len(texts_rows) > 1:#sometimes there are just counted comments
-                     
+                    if len(texts_rows) > 1:#sometimes there are just counted comments                     
                         entry_date, date = texts_rows[1].split(":")
                         folder, id = texts_rows[3].split(":")
                         project['ingreso'] = date.strip()
-                        project['expediente'] = id.strip()
-                        
+                        project['expediente'] = id.strip()                        
                         #eliminar o aumentar esta seccion
                         #hay mas elementos pero por ahi no son importantes
                         if len(texts_rows) >= 3: #there is also a mensaje section, and other
@@ -241,7 +255,6 @@ class SilpyHTMLParser(object):
     def parsear_lista_sessiones(self, html):
         #recibe el html despues de buscar las sesiones por periodo 
         proyectos = []
-        proyecto = {}
         soup = BeautifulSoup(html)
         periodo = soup.find(id = 'formMain:idPeriodoParlamentario_label')
         periodo = periodo.text.strip()
@@ -250,6 +263,7 @@ class SilpyHTMLParser(object):
         for tr in tr_list:
             td_list = tr.find_all('td')
             if len(td_list) > 0:
+                proyecto = {}
                 proyecto['index'] = td_list[0].text.strip()
                 proyecto['fecha'] = td_list[1].div.text.strip()
                 proyecto['nro_sesion'] = td_list[2].text.strip()
@@ -257,8 +271,25 @@ class SilpyHTMLParser(object):
                 proyecto['anexos_js_call'] = td_list[4].button['onclick']
                 proyecto['verProyectos_js_call'] = td_list[5].button['onclick']
                 proyectos.append(proyecto)
-
         return proyectos
+
+    def extract_session_attachment(self, html):
+        #anexos por de la sesion
+        soup = BeautifulSoup(html)
+        anexos_table = soup.find(id="formMain:dataTableDetalle").table
+        tr_list = anexos_table.tbody.find_all('tr')
+        anexos = []
+        for tr in tr_list:
+            td_list = tr.find_all('td')
+            #td_list[0].text.strip() 
+            nombre = td_list[1].text.strip()
+            #discard size and replace spaces with underscore
+            nombre = nombre[:nombre.find("\n")].replace(" ", "_")
+            anexo = {'nombre': nombre,
+                     'registered_date': td_list[2].text.strip(),
+                     'button_id': td_list[3].button['id']}
+            anexos.append(anexo)
+        return anexos
 
     def extraer_comisiones_por_periodo(self, html):
         soup = BeautifulSoup(html)
@@ -307,7 +338,6 @@ class SilpyHTMLParser(object):
         for tr in tr_list:
             tramitacion = {}
             td_list = tr.find_all('td')
-
             tramitacion['index'] = td_list[0].text.strip()
             tramitacion['sesion'] = td_list[1].text.strip()
             tramitacion['fecha'] = td_list[2].text.strip()
@@ -318,7 +348,8 @@ class SilpyHTMLParser(object):
                 td1_span_list = td1.find_all('span')
                 #print "td1_span_list " + str(td1_span_list)
                 if len(td1_span_list) > 1:
-                    tramitacion['etapa'] = {'camara': td1_span_list[0].text, td1_span_list[1].text : td1_span_list[2].text} 
+                    tramitacion['etapa'] = {'camara': td1_span_list[0].text, 
+                                            td1_span_list[1].text : td1_span_list[2].text} 
 
             #Resultado
             #TODO: todo esto es un kilombo, aqui hay de todo
@@ -357,6 +388,16 @@ class SilpyHTMLParser(object):
         text = th.table.tbody.tr.td.text
         number_of_rows = text[0 : text.index('registros recuperados')]
         return int(number_of_rows.strip())
+    
+    def extract_viewstate(self, html):
+        soup = BeautifulSoup(html)
+        viewState_container = soup.find(id="javax.faces.ViewState")
+        viewState = None
+        if viewState_container.name == 'input': 
+            viewState = viewState_container['value']
+        elif viewState_container.name == 'update':
+            viewstate = viewState_container.text         
+        return viewState
 
 
 from selenium.webdriver.support.ui import WebDriverWait
@@ -383,7 +424,14 @@ class SilpyNavigator(object):
         
         except TimeoutException:
             print "Loading took too much time!"
-
+            
+    def _make_driver_wait(self):
+        try:
+            wait = WebDriverWait(self.browser, 15)
+            wait.until(utils._wait_document_ready, self.browser)
+        except TimeoutException:
+            print "Loading took too much time!"
+       
     def count_table_rows(self):
         #wait for css_element
         #TODO: css element as parameter
@@ -391,18 +439,28 @@ class SilpyNavigator(object):
         self.make_webdriver_wait(By.CSS_SELECTOR, css_element)
         return self.parser.number_of_rows_found(self.browser.page_source)
         
+    def _call_menu_item(self, item_text):
+        html = self.browser.page_source        
+        menu = self.parser.extraer_items_menu(html)
+        for key, val in menu.items():
+            if key == item_text:
+                js_call = val
+                break
+        if js_call:
+            self.browser.execute_script(js_call)
+
     def get_parlamentary_list(self, origin):
         """returns the list of parlamentraries for the period 2008-2013
            @origin: S=senadores, D=diputados """
 
         input = self.browser.find_element_by_id("formPreference:j_id16")
         input.click()
-
         self.make_webdriver_wait(By.ID, "formMain:idPeriodoLegislativo_input")
         select_periodo = self.browser.find_element_by_id("formMain:idPeriodoLegislativo_input")
         select = Select(select_periodo)
         select.select_by_index(4)
-        self.browser.execute_script("PrimeFaces.ab({source:'formMain:cmdBuscarParlamentario',update:'formMain'});return false;")
+        self.browser.execute_script("PrimeFaces.ab({source:'formMain:cmdBuscarParlamentario'" +\
+                                    ",update:'formMain'});return false;")
         
         # wait for th class? Yes
         #WARNING: this is a bug
@@ -410,12 +468,18 @@ class SilpyNavigator(object):
         #use 'data-ri' instead of css ?
         self.make_webdriver_wait(By.CSS_SELECTOR, '.ui-widget-content.ui-datatable-even')#".ui-datatable-header.ui-widget-header")
         number_of_rows = self.parser.number_of_rows_found(self.browser.page_source) #extraemos la cantidad de registros encontrados
-        #esperamos por la ultima aparicion del registro en base a su css
+        #esperamos por la aparicion del ultimo registro en base a su css
         last_row_id = "formMain:dataTable:%s:j_idt92" %(str(number_of_rows - 1))
         self.make_webdriver_wait(By.ID, last_row_id)
         return self.browser.page_source 
 
-    def buscar_comisiones_por_periodo(self):
+    def get_member_projects(self, member_id):
+        url='http://sil2py.senado.gov.py/formulario/verProyectosParlamentario.pmf'\
+          +'?q=verProyectosParlamentario%2F' + member_id
+        self.browser.get(url)
+        return self.browser.page_source
+
+    def buscar_comisiones_por_periodo(self, period):
         #este item prrobablemente deberia ser todo un ciclo de navegacion
         # 1- del menu principal llamar al js de Comisiones por Período
         # 2- seleccionar camara (senadores o diputados)
@@ -425,16 +489,7 @@ class SilpyNavigator(object):
         # 6- Invocar a [Integrantes]
         # 7- Parser: Extraer datos del resultado de (6)
         # 8- Cerrar pop up (7) y repetir desde 6 con el siguiente item
-        html = self.browser.page_source
-        
-        menu = self.parser.extraer_items_menu(html)
-        for key, val in menu.items():
-            if key == u'Comisiones por Período':
-                js_call = val
-                break
-        if js_call:
-            self.browser.execute_script(js_call)
-
+        self._call_menu_item(u'Comisiones por Período')
         self.make_webdriver_wait(By.ID, "formMain:idPeriodoParlamentario_input")
         select_camara_element = self.browser.find_element_by_id("formMain:idOrigen_input")
         select_camara = Select(select_camara_element)
@@ -460,6 +515,40 @@ class SilpyNavigator(object):
             
         return comisiones
 
+    #period = 2014-2013
+    #origin = D(diputados), S(senadores)
+    def list_sessions_by_period(self, origin, period):
+        self._call_menu_item(u'Sesiones por Período')
+        self._make_driver_wait()
+        self.make_webdriver_wait(By.ID, "formMain:idOrigen_input")
+        select_camara_element = self.browser.find_element_by_id("formMain:idOrigen_input")
+        select_camara = Select(select_camara_element)
+        select_camara.select_by_value(origin)
+
+        select_periodo_element = self.browser.find_element_by_id("formMain:idPeriodoParlamentario_input")
+        select_periodo = Select(select_periodo_element)
+        select_periodo.select_by_visible_text(period)
+        self.browser.execute_script("PrimeFaces.ab({source:'formMain:cmdBuscar'" +\
+                                    ",update:'formMain'});return false;")
+        self._make_driver_wait()
+        number_of_rows = self.count_table_rows()
+        #we wait for the button in the lat row 
+        #Ex: formMain:dataTable:53:toggle
+        last_row_id = "formMain:dataTable:%s:toggle" %(str(number_of_rows - 1))
+        self.make_webdriver_wait(By.ID, last_row_id)
+        return self.browser.page_source 
+    
+    def download_attachment(self, origin, button_id, filename):
+        #download attachments:
+        # find button by id button_id': u'formMain:dataTableDetalle:3:j_idt113'
+        # and click it
+        button = self.browser.find_element_by_id(button_id)
+        button.click()        
+        session_id = self.browser.get_cookie('JSESSIONID')['value']
+        viewstate = self.parser.extract_viewstate(self.browser.page_source)
+        #TODO async?
+        utils.download_file(origin, session_id, viewstate, filename)
+        
     def obtener_detalle_de_proyecto(self, proyecto_id):
         #obtiene una comision e invoca a la url:
         #GET http://silpy.congreso.gov.py/formulario/VerDetalleTramitacion.pmf?q=VerDetalleTramitacion%2F + comision_id
@@ -489,42 +578,80 @@ class SilpyNavigator(object):
 ### MainApp Section ###
 #######################
 from mongo_db import SilpyMongoClient
+import urllib2
 
 class SilpyScrapper(object):
 
     def __init__(self):   
+        self.periods = ['2013-2014', '2014-2015']
+        self.origins = ['D', 'S']#senadores
         self.navigator = SilpyNavigator()
         self.parser = SilpyHTMLParser()
         self.mongo_client = SilpyMongoClient()
 
-    def get_parlamentary_list(self):
+    def get_members_data(self):
         data = self.navigator.get_parlamentary_list('S')
-        rows = self.parser._extract_parlamentary_data(data)
+        rows = self.parser.parse_parlamentary_data(data)
         self.mongo_client.save_senadores(rows)
         
+    def get_proyects_by_member(self):
+         self.mongo_client = SilpyMongoClient()
+         senadores  = client.db.senadores.find()
+         for s in senadores:
+             member_id = s['id']
+             url='http://sil2py.senado.gov.py/formulario/verProyectosParlamentario.pmf'\
+                   +'?q=verProyectosParlamentario%2F' + member_id
+
+             response = urllib2.urlopen(url)
+             html = response.read()
+             print parser.parse_projects_by_parlamentary(html)
+
     def get_commiittees_by_period(self):
          periodo = '2014-2015'
          comisiones_periodo = self.navigator.buscar_comisiones_por_periodo()
          self.mongo_client.save_comisiones_por_periodo(periodo, comisiones_periodo)
         
+    def get_sessions_by_period(self):
+        #for period in self.periods:
+        period = '2014-2015'
+        origin='D'
+        data = self.navigator.list_sessions_by_period(origin, period)
+        session_list = self.parser.parsear_lista_sessiones(data)
+        for s in session_list:
+           #call and extract anexos: anexos_js_call
+           #print s['index']+ ' - - '  +s['anexos_js_call']
+           self.navigator.browser.execute_script(s['anexos_js_call'])
+           #wait for the popup to load
+           #formMain:dataTableDetalle:0:j_idt113 the id of the first button
+           self.navigator.make_webdriver_wait(By.ID, "formMain:dataTableDetalle:0:j_idt113")
+           #pass the resulting html to attachment extractor
+           attachments = self.parser.extract_session_attachment(self.navigator.browser.page_source)
+           print s
+           #download attachments:
+           # find button by button_id : u'formMain:dataTableDetalle:3:j_idt113'
+           # and click it
+           # for attachment in attachments:
+           #     print attachment
+           #     self.navigator.download_attachment(origin, 
+           #                                        attachment['button_id'], 
+           #                                        attachment['nombre'])
+               
+            #break
+            #find and call button_id
+            #call and extract proyectos
 
+            
 
 #############
 ##TEST CODE## 
 #############
-
+parser = SilpyHTMLParser()
 sc = SilpyScrapper()
-sc.get_parlamentary_list()
-sc.get_commiittees_by_period()
+#sc.get_sessions_by_period()
+sc.get_members_data()
+
+# sc.get_commiittees_by_period()
 # update_data = 'resources/buscar_parlamentarios_update.html'
 #lista_parlamentarios = 'resources/lista_parlamentarios.html'
 # projects_by_committee = 'resources/projects_by_committee.html'
-
 # filename = 'resources/informacion_proyecto.html'
-
-# from utils import *
-# html = read_file_as_string(filename)
-
-# tramitaciones = parser.extraccion_de_informacion_de_proyecto(html)
-# for t in tramitaciones:
-#     print t['etapa']
