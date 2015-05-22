@@ -452,16 +452,16 @@ class SilpyNavigator(object):
     def get_parlamentary_list(self, origin):
         """returns the list of parlamentraries for the period 2008-2013
            @origin: S=senadores, D=diputados """
-
+        #TODO: makte option selection with parameters
+        #for origin and period 
         input = self.browser.find_element_by_id("formPreference:j_id16")
         input.click()
         self.make_webdriver_wait(By.ID, "formMain:idPeriodoLegislativo_input")
         select_periodo = self.browser.find_element_by_id("formMain:idPeriodoLegislativo_input")
         select = Select(select_periodo)
-        select.select_by_index(4)
+        select.select_by_value(origin)#select_by_index(4)
         self.browser.execute_script("PrimeFaces.ab({source:'formMain:cmdBuscarParlamentario'" +\
-                                    ",update:'formMain'});return false;")
-        
+                                    ",update:'formMain'});return false;")        
         # wait for th class? Yes
         #WARNING: this is a bug
         # the css class .ui-widget-content.ui-datatable-even can be even or odd depending on the number of rows
@@ -595,6 +595,7 @@ class SilpyScrapper(object):
         self.mongo_client.save_senadores(rows)
         
     def get_proyects_by_member(self):
+        #TODO:make this method async
          self.mongo_client = SilpyMongoClient()
          senadores  = client.db.senadores.find()
          for s in senadores:
@@ -612,6 +613,7 @@ class SilpyScrapper(object):
          self.mongo_client.save_comisiones_por_periodo(periodo, comisiones_periodo)
         
     def get_sessions_by_period(self):
+        #TODO
         #for period in self.periods:
         period = '2014-2015'
         origin='D'
@@ -626,7 +628,6 @@ class SilpyScrapper(object):
            self.navigator.make_webdriver_wait(By.ID, "formMain:dataTableDetalle:0:j_idt113")
            #pass the resulting html to attachment extractor
            attachments = self.parser.extract_session_attachment(self.navigator.browser.page_source)
-           print s
            #download attachments:
            # find button by button_id : u'formMain:dataTableDetalle:3:j_idt113'
            # and click it
@@ -635,10 +636,8 @@ class SilpyScrapper(object):
            #     self.navigator.download_attachment(origin, 
            #                                        attachment['button_id'], 
            #                                        attachment['nombre'])
-               
-            #break
-            #find and call button_id
-            #call and extract proyectos
+           #find and call button_id
+           #call and extract proyectos
 
             
 
@@ -649,7 +648,6 @@ parser = SilpyHTMLParser()
 sc = SilpyScrapper()
 #sc.get_sessions_by_period()
 sc.get_members_data()
-
 # sc.get_commiittees_by_period()
 # update_data = 'resources/buscar_parlamentarios_update.html'
 #lista_parlamentarios = 'resources/lista_parlamentarios.html'

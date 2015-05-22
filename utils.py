@@ -14,8 +14,8 @@ attachments_command = ["curl", "http://sil2py.senado.gov.py/formulario/ListarSes
 
 
 def get_new_browser():
-     browser = webdriver.Firefox()
-#     browser = webdriver.PhantomJS()
+#     browser = webdriver.Firefox()
+     browser = webdriver.PhantomJS()
      browser.set_window_size(1120, 550)
      return browser
 
