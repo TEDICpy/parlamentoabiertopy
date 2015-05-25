@@ -35,9 +35,13 @@ class SilpyMongoClient(object):
         db_comisiones_periodo = self.db.comisiones_periodo
         comisiones_periodo = {'periodo': periodo, 
                               'comisiones': comisiones}
-
         result_ids = db_comisiones_periodo.insert_one(comisiones_periodo) 
         return result_ids
 
     def get_senator(self, id):
-       self.db.senadores.find_one({'id': id})
+        return self.db.senadores.find_one({'id': str(id)})
+        
+    def save_articles(self, articles):
+        db_articles = self.db.articles
+        result = db_articles.insert_many(articles)
+        return result
