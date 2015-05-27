@@ -38,21 +38,20 @@ class PopItApiKeyAuth(AuthBase):
         return r
 
 auth_key = PopItApiKeyAuth(api_key=api_key)
-api = slumber.API("http://test.popit.tdic:3000/api/v0.1", auth=auth_key)
-
-
+url_string = 'http://' + hostname + ':' + str(port) + '/api/' + api_version 
+api = slumber.API(url_string, auth=auth_key)
 
 def create_membership(data):
 
     organization_id = data['organization_id'] 
     person_id = data['person_id']
     membership_id = organization_id + person_id
-    r = requests.get('http://test.popit.tdic:3000/api/v0.1/memberships/' + membership_id)
+    r = requests.get(url_string + '/memberships/' + membership_id)
     if r.status_code == 404:
         data['id'] = membership_id
         data['organization_id'] = organization_id
         mem = api.memberships.post(data)
-        print 'membresia nueva.. id: '+ membership_id + '  ::  ' + mem['result']['id'] 
+        print 'membresia nueva.. id: ' + membership_id + '  ::  ' + mem['result']['id'] 
     else:
         print "ya existe membresia"
 
@@ -62,7 +61,7 @@ def committees_post(data):
         name = data['name']
         com_id = hashlib.sha1(name.encode('latin-1')).hexdigest()
         person_id = data['person_id']
-        r = requests.get('http://test.popit.tdic:3000/api/v0.1/organizations/' + com_id)
+        r = requests.get(url_string + '/organizations/' + com_id)
         com = r.json()
         if 'result' in com and 'id' in com['result'] and com['result']['id'] == com_id:
             result = com['result']
@@ -89,7 +88,7 @@ def senador_post(data):
     memberships = []
     if 'name'in data:
         sen_id = hashlib.sha1(data['name'].encode('latin-1')).hexdigest()
-        r = requests.get('http://test.popit.tdic:3000/api/v0.1/persons/' +sen_id)
+        r = requests.get(url_string + '/persons/' +sen_id)
         if r.status_code == 404:
             new_sen['id'] = sen_id        
             new_sen['name'] = data['name']
