@@ -51,12 +51,12 @@ def create_membership(data):
         data['id'] = membership_id
         data['organization_id'] = organization_id
         mem = api.memberships.post(data)
-        print 'membresia nueva.. id: ' + membership_id + '  ::  ' + mem['result']['id'] 
     else:
         print "ya existe membresia"
 
 def committees_post(data):
     comision_id = None
+    post_id = None
     if 'name' in data:
         name = data['name']
         com_id = hashlib.sha1(name.encode('latin-1')).hexdigest()
@@ -65,20 +65,34 @@ def committees_post(data):
         com = r.json()
         if 'result' in com and 'id' in com['result'] and com['result']['id'] == com_id:
             result = com['result']
-            print "encontrado ", result['id']
             comision_id = result['id']
         else:    
             committee = {'name': name, 'id': com_id}
+            if 'link' in data: 
+                committee['links'] = [{'url': data['link'], 'note': 'enlace'}]
             result = api.organizations.post(committee)
             comision_id = result['result']['id']
-            print "Nuevo: ", comision_id
+        if 'post' in data:
+            p_id = comision_id + hashlib.sha1(data['post'].encode('latin-1')).hexdigest()
+            r = requests.get(url_string + '/posts/' + p_id)
+            if r.status_code == 404:
+                post = {'id': p_id,
+                        'label': data['post'],
+                        'organization_id': comision_id,
+                        'role': data['post'],
+                        }
+                res = api.posts.post(post)
+                if 'result' in res and 'id' in res['result']:
+                    post_id = res['result']['id']
+            else: 
+                post_id = p_id
         if comision_id and person_id:
             data = {
                 'organization_id': comision_id,
-                'person_id': person_id,
-                'role': 'Miembro',
-                'label': 'label',
+                'person_id': person_id
                 }
+            if post_id:
+                data['post_id'] = post_id 
             mem = create_membership(data)
    
 
@@ -90,6 +104,7 @@ def senador_post(data):
         sen_id = hashlib.sha1(data['name'].encode('latin-1')).hexdigest()
         r = requests.get(url_string + '/persons/' +sen_id)
         if r.status_code == 404:
+            print 'Procesando datos, Senador: ' + data['name']
             new_sen['id'] = sen_id        
             new_sen['name'] = data['name']
             if 'email' in data:
@@ -114,6 +129,8 @@ def senador_post(data):
                     for c in  data['committees']:
                         c['person_id'] = person_id
                         com = committees_post(c)
+        else: 
+            print 'Ya existe Senador: ' + data['name'] 
             
 
 senadores = mdb.senadores.find()
