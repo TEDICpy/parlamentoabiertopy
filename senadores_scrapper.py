@@ -101,7 +101,7 @@ class SenadoresParser(object):
             acapite = td_list[2].text.strip()
             new_line = acapite.index('\n')
             actividad['heading'] = {'title':acapite[0:new_line].strip() , 
-                                    'detial':acapite[new_line:].strip()}
+                                    'detail':acapite[new_line:].strip()}
             actividades.append(actividad)
         
         return actividades
@@ -257,7 +257,7 @@ class SenadoresScrapper(object):
 #parser = SenadoresParser()
 scrapper = SenadoresScrapper()
 scrapper.extract_senators_data()
-#scrapper.get_all_articles()
+scrapper.get_all_articles()
 
 
 #this is not vaild, session are only reachable through silpy

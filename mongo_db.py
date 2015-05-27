@@ -27,6 +27,7 @@ class SilpyMongoClient(object):
         return results
 
     def update_senador(self, senador):
+        #self.db.senadores.find_one({'id': senador['id'])})
         db_senadores = self.db.senadores
         result = db_senadores.update({'id':senador['id']}, {'$set':senador}, True)
         return result

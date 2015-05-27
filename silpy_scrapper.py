@@ -8,6 +8,9 @@ Created on Feb 26, 2015
 import httplib
 import json
 import urllib
+import hashlib 
+import utils
+import requests
 import unicodedata
 from bs4 import BeautifulSoup, CData
 from HTMLParser import HTMLParser
@@ -15,8 +18,6 @@ import time
 
 from request_content import committee_item_data
 
-import hashlib 
-import utils
 
 def write_html(html):
 
@@ -105,6 +106,7 @@ class SilpyHTMLParser(object):
             if str_images in src:
                 #TODO: download img!
                 #http://sil2py.senado.gov.py/images/100081.jpg
+                row['img'] = 'http://sil2py.senado.gov.py'+src
                 row['id'] = src[len(str_images)+1: len(src)].replace('.jpg','')
                 #extraction of formMain
                 #formMain goes in the following request to get
@@ -113,7 +115,6 @@ class SilpyHTMLParser(object):
                 #work_div contains two subdivs, one for projects and the other 
                 #for designations 
                 work_divs = td_list[3].div.find_all('div', recursive=False)
-                print work_divs
                 committees_lis = work_divs[0].find_all("li")
                 committees = []
                 for li in committees_lis:
@@ -130,7 +131,6 @@ class SilpyHTMLParser(object):
                         js_call = li.a['onclick']
                         designation = {'text': li.text.strip(), 'js_call': js_call}
                         designations.append(designation)
-                        print designations
                     row['designations'] = designations
             rows.append(row)
             
@@ -143,10 +143,13 @@ class SilpyHTMLParser(object):
         #the id increments for each section
         #TODO: count sections?
         projects = []
-        for i in range(0,4):
+        tabs_div = soup.find(id="formMain:j_idt90")
+        h3_list = tabs_div.find_all('h3', recursive=False)#number of tabs                         
+       
+        for i in range(0,len(h3_list)):
             id="formMain:j_idt90:%i:dataTable_data" %(i)
             tbody=soup.find(id=id)
-            projects.append(parser.parsear_lista_de_proyectos(tbody))
+            projects.append(self.parsear_lista_de_proyectos(tbody))
         return projects
 
     #quiza ni necesitamos ya que podemos quitar las estadisticas localmente
@@ -165,8 +168,8 @@ class SilpyHTMLParser(object):
             for tr in tr_list:
                 td_list = tr.find_all("td")
                 values = {}
-                values["cantidad"] = td_list[0].text
-                values["estado"] = td_list[1].text 
+                values["quantity"] = td_list[0].text
+                values["stage"] = td_list[1].text 
                 statistics.append(values)
         else:
             write_html(html)
@@ -182,10 +185,13 @@ class SilpyHTMLParser(object):
         description = soup.find(id="formMain:denominacion")       
         return self.parsear_lista_de_proyectos(result_tbody)
 
-    def parsear_lista_de_proyectos(self, result_tbody):
-        #result_body es tbody que contiene las filas de la tabla
-        #Ej.: result_tbody = soup.find(id = "formMain:dataTableProyecto_data") 
-        #extracts data from the results table in resources/projects_by_committee.html
+    def parsear_lista_de_proyectos(self, result_tbody, id=None):
+        #result_body is the tbody which contains the tebls's rows
+        #Ex.: result_tbody = soup.find(id = "formMain:dataTableProyecto_data") 
+        #if the id is not None then we extract the result_tbody with that id        
+        if id is not None:
+            result_tbody = result_tbody.find(id)
+        
         tr_list = result_tbody.find_all("tr", recursive=False)
         projects = []
         
@@ -196,10 +202,10 @@ class SilpyHTMLParser(object):
                 td0 = td_list[0]
 
                 if td0.div != None:
-                    project['titulo'] = td0.a.text                   
+                    project['title'] = td0.a.text                   
                 span_list = td0.find_all('span')
                 if span_list != None and len(span_list) > 0:
-                    project['tipo'] = span_list[0].text.strip()
+                    project['type'] = span_list[0].text.strip()
                     texts_rows = span_list[1].text.split('\n')
                     #el id del proyecto se quita del icono "Votar Por Proyecto"
                     #siendo el id la ultima parte numerica del link.
@@ -216,8 +222,8 @@ class SilpyHTMLParser(object):
                     if len(texts_rows) > 1:#sometimes there are just counted comments                     
                         entry_date, date = texts_rows[1].split(":")
                         folder, id = texts_rows[3].split(":")
-                        project['ingreso'] = date.strip()
-                        project['expediente'] = id.strip()                        
+                        project['entry_date'] = date.strip()
+                        project['file'] = id.strip()                        
                         #eliminar o aumentar esta seccion
                         #hay mas elementos pero por ahi no son importantes
                         if len(texts_rows) >= 3: #there is also a mensaje section, and other
@@ -229,7 +235,7 @@ class SilpyHTMLParser(object):
                                     messages = []
                                     for span in tr_spans:
                                         messages.append(span.text.replace("|", "").strip())
-                                    project['mensajes'] = messages
+                                    project['messages'] = messages
 
                 #segunda columna: Etapa
                 if len(td_list) >= 1:
@@ -237,7 +243,8 @@ class SilpyHTMLParser(object):
                     td1_span_list = td1.find_all('span')
                     #print "td1_span_list " + str(td1_span_list)
                     if len(td1_span_list) > 1:
-                        project['etapa'] = {'camara': td1_span_list[0].text, td1_span_list[1].text : td1_span_list[2].text} 
+                        project['estage'] = {'chamber': td1_span_list[0].text, 
+                                             td1_span_list[1].text : td1_span_list[2].text} 
 
                 if len(project) != 0:        
                     projects.append(project)
@@ -285,7 +292,7 @@ class SilpyHTMLParser(object):
             nombre = td_list[1].text.strip()
             #discard size and replace spaces with underscore
             nombre = nombre[:nombre.find("\n")].replace(" ", "_")
-            anexo = {'nombre': nombre,
+            anexo = {'name': nombre,
                      'registered_date': td_list[2].text.strip(),
                      'button_id': td_list[3].button['id']}
             anexos.append(anexo)
@@ -301,9 +308,9 @@ class SilpyHTMLParser(object):
             comision = {}
             td_list = tr.find_all('td', recursive=False)
             comision['denominacion'] = td_list[1].text.strip()
-            comision['tipo']  = td_list[2].text.strip()
-            comision['camara'] = td_list[3].text.strip()
-            comision['integrantes_js_call'] = td_list[4].div.button['onclick']
+            comision['type']  = td_list[2].text.strip()
+            comision['chamber'] = td_list[3].text.strip()
+            comision['member_js_call'] = td_list[4].div.button['onclick']
             comisiones.append(comision)
         return comisiones
 
@@ -313,22 +320,22 @@ class SilpyHTMLParser(object):
         
         #informacion del proyecto
         info = {}
-        info['expediente'] = info_div.find(id='formMain:expedienteCamara').text.strip()
-        info['tipo'] = info_div.find(id='formMain:idTipoProyecto').text.strip()
-        info['materia'] = info_div.find(id='formMain:idMateria').text.strip()
-        info['urgencia'] = info_div.find(id='formMain:idUrgencia').text.strip()
-        info['fecha_ingreso'] = info_div.find(id='formMain:fechaIngreso').text.strip()
+        info['file'] = info_div.find(id='formMain:expedienteCamara').text.strip()
+        info['type'] = info_div.find(id='formMain:idTipoProyecto').text.strip()
+        info['subject'] = info_div.find(id='formMain:idMateria').text.strip()
+        info['importance'] = info_div.find(id='formMain:idUrgencia').text.strip()
+        info['entry_date'] = info_div.find(id='formMain:fechaIngreso').text.strip()
         info['iniciativa'] = info_div.find(id='formMain:idTipoIniciativa').text.strip()
-        info['origen'] = info_div.find(id='formMain:idOrigen').text.strip()
-        info['mensaje_pe'] =info_div.find(id='formMain:numeroMensaje').text.strip()
-        info['acapite'] =info_div.find(id='formMain:acapite').text.strip()
+        info['origin'] = info_div.find(id='formMain:idOrigen').text.strip()
+        info['message'] =info_div.find(id='formMain:numeroMensaje').text.strip()
+        info['heading'] =info_div.find(id='formMain:acapite').text.strip()
 
         #'Etapa de la Tramitación'
         etapa = {}
         etapas_table = soup.find(id='formMain:panelEtapas')
-        etapa['etapa'] = etapas_table.find(id='formMain:idEtapaProy').text.strip()
-        etapa['sub_etapa'] = etapas_table.find(id='formMain:idSubEtapaProy').text.strip()
-        etapa['estado'] = etapas_table.find(id='formMain:idEstadoProyecto').text.strip()
+        etapa['stage'] = etapas_table.find(id='formMain:idEtapaProy').text.strip()
+        etapa['sub_stage'] = etapas_table.find(id='formMain:idSubEtapaProy').text.strip()
+        etapa['status'] = etapas_table.find(id='formMain:idEstadoProyecto').text.strip()
 
         #detalle de tramitacion
         tbody_content = soup.find(id='formMain:dataTableTramitacion_data')
@@ -339,8 +346,8 @@ class SilpyHTMLParser(object):
             tramitacion = {}
             td_list = tr.find_all('td')
             tramitacion['index'] = td_list[0].text.strip()
-            tramitacion['sesion'] = td_list[1].text.strip()
-            tramitacion['fecha'] = td_list[2].text.strip()
+            tramitacion['session'] = td_list[1].text.strip()
+            tramitacion['date'] = td_list[2].text.strip()
 
             #TODO: extraccion de etapa se puede generalizar
             if len(td_list) >= 1:
@@ -348,12 +355,12 @@ class SilpyHTMLParser(object):
                 td1_span_list = td1.find_all('span')
                 #print "td1_span_list " + str(td1_span_list)
                 if len(td1_span_list) > 1:
-                    tramitacion['etapa'] = {'camara': td1_span_list[0].text, 
+                    tramitacion['stage'] = {'chamber': td1_span_list[0].text, 
                                             td1_span_list[1].text : td1_span_list[2].text} 
 
             #Resultado
             #TODO: todo esto es un kilombo, aqui hay de todo
-            tramitacion['resultado'] = td_list[4]
+            tramitacion['result'] = td_list[4]
             tramitaciones.append(tramitacion)
 
         return tramitaciones
@@ -368,9 +375,9 @@ class SilpyHTMLParser(object):
             td_list = tr.find_all('td', recursive=False)
             reverse = td_list[0].img['src'][::-1]
             p['id'] = reverse[reverse.index('.'): reverse.index('/')][::-1]
-            p['nombre'] = td_list[1].text.strip()
-            p['camara'] = td_list[2].text.strip()
-            p['cargo'] = td_list[3].text.strip()
+            p['name'] = td_list[1].text.strip()
+            p['chamber'] = td_list[2].text.strip()
+            p['post'] = td_list[3].text.strip()
         return p
 
     def procesar_proyectos_por_comite(self, data):
@@ -459,7 +466,7 @@ class SilpyNavigator(object):
         self.make_webdriver_wait(By.ID, "formMain:idPeriodoLegislativo_input")
         select_periodo = self.browser.find_element_by_id("formMain:idPeriodoLegislativo_input")
         select = Select(select_periodo)
-        select.select_by_value(origin)#select_by_index(4)
+        select.select_by_index(4)
         self.browser.execute_script("PrimeFaces.ab({source:'formMain:cmdBuscarParlamentario'" +\
                                     ",update:'formMain'});return false;")        
         # wait for th class? Yes
@@ -511,7 +518,7 @@ class SilpyNavigator(object):
             self.browser.execute_script(c['integrantes_js_call'])
             time.sleep(2)
             miembros = self.parser.extraer_miembros_por_comision(self.browser.page_source)
-            c['miembros'] = miembros
+            c['members'] = miembros
             
         return comisiones
 
@@ -592,20 +599,18 @@ class SilpyScrapper(object):
     def get_members_data(self):
         data = self.navigator.get_parlamentary_list('S')
         rows = self.parser.parse_parlamentary_data(data)
-        self.mongo_client.save_senadores(rows)
-        
-    def get_proyects_by_member(self):
-        #TODO:make this method async
-         self.mongo_client = SilpyMongoClient()
-         senadores  = client.db.senadores.find()
-         for s in senadores:
+        for s in rows:
              member_id = s['id']
              url='http://sil2py.senado.gov.py/formulario/verProyectosParlamentario.pmf'\
                    +'?q=verProyectosParlamentario%2F' + member_id
-
              response = urllib2.urlopen(url)
              html = response.read()
-             print parser.parse_projects_by_parlamentary(html)
+             args = {'id': s['id']
+                     ,'projects': self.parser.parse_projects_by_parlamentary(html)}
+             #download img
+             filename = 'img/'+ s['id']+ '.jpg'
+             urllib.urlretrieve(s['img'], filename)
+        self.mongo_client.update_senadores(rows)
 
     def get_commiittees_by_period(self):
          periodo = '2014-2015'
@@ -640,16 +645,11 @@ class SilpyScrapper(object):
            #call and extract proyectos
 
             
-
 #############
 ##TEST CODE## 
 #############
-parser = SilpyHTMLParser()
+#parser = SilpyHTMLParser()
 sc = SilpyScrapper()
 #sc.get_sessions_by_period()
 sc.get_members_data()
 # sc.get_commiittees_by_period()
-# update_data = 'resources/buscar_parlamentarios_update.html'
-#lista_parlamentarios = 'resources/lista_parlamentarios.html'
-# projects_by_committee = 'resources/projects_by_committee.html'
-# filename = 'resources/informacion_proyecto.html'
