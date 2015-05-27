@@ -40,108 +40,86 @@ class PopItApiKeyAuth(AuthBase):
 auth_key = PopItApiKeyAuth(api_key=api_key)
 api = slumber.API("http://test.popit.tdic:3000/api/v0.1", auth=auth_key)
 
+
+
 def create_membership(data):
-    if 'organization_id' in data: 
-        organization_id = data['organization_id']
-    else: 
-        if 'organization' in data:
-            organization_id = create_organization(data['organization'])
-        else_:
-            raise "cannot create membership or organization, no data supplied"
+
+    organization_id = data['organization_id'] 
     person_id = data['person_id']
     membership_id = organization_id + person_id
-    mem = api.membership.get(membership_id)
-    print mem
-
+    r = requests.get('http://test.popit.tdic:3000/api/v0.1/memberships/' + membership_id)
+    if r.status_code == 404:
+        data['id'] = membership_id
+        data['organization_id'] = organization_id
+        mem = api.memberships.post(data)
+        print 'membresia nueva.. id: '+ membership_id + '  ::  ' + mem['result']['id'] 
+    else:
+        print "ya existe membresia"
 
 def committees_post(data):
-    #api.note.get(title__startswith="Bacon")
     comision_id = None
-    nombre = data['nombre']
-    #nom_id = hashlib.sha1(nombre.encode('ascii', errors='ignore')).hexdigest()
-    #print "sha1 " , nom_id
-    person_id = data['person_id']
-    r = requests.get('http://test.popit.tdic:3000/api/v0.1/organizations/' + nombre)
-    com = r.json()
-    #print('COM: ', com)
-    if 'result' in com and 'name' in com['result'] and com['result']['name'] == nombre:
-        result = com['result']
-        #print "encontrado ", result['id']
-        comision_id = result['id']
-    else:    
-        committee = {'name': nombre, 'id': nombre}
-        result = api.organizations.post(committee)
-        #print "creando: " , result['result']['id']
-        comision_id = result['result']['id']
-        #print "Nuevo: ", comision_id
-    if comision_id and person_id:
-        data = {
-            'organization_id': comision_id,
-            'person_id': person_id,
-            'role': 'Miembro',
-            'label': 'label',
-            }
-        mem = create_membership(data)
-        membership_id =  comision_id+person_id
-        q_str = 'http://test.popit.tdic:3000/api/v0.1/memberships/'+membership_id
-        print "q:string: ", q_str
-        r = requests.get(q_str)
-        print "codigo", r.content
-        res = r.json()
-        print "membership_id " , membership_id
-        print "resultado membresia get", res
-        if 'result' in res and 'id' in res['result']:
-            print "resultado de membresia: ", res['result']
-        else:     
-            mem = {
-                    'id': membership_id,
-                    'label': 'Miembro',
-                    'role': 'Miembro',
-                    'person_id': person_id,
-                    'organization_id': comision_id,
-                    }
-            result = api.memberships.post(mem)
-            #print "membership ", result['result']['id'] 
-
-    
+    if 'name' in data:
+        name = data['name']
+        com_id = hashlib.sha1(name.encode('latin-1')).hexdigest()
+        person_id = data['person_id']
+        r = requests.get('http://test.popit.tdic:3000/api/v0.1/organizations/' + com_id)
+        com = r.json()
+        if 'result' in com and 'id' in com['result'] and com['result']['id'] == com_id:
+            result = com['result']
+            print "encontrado ", result['id']
+            comision_id = result['id']
+        else:    
+            committee = {'name': name, 'id': com_id}
+            result = api.organizations.post(committee)
+            comision_id = result['result']['id']
+            print "Nuevo: ", comision_id
+        if comision_id and person_id:
+            data = {
+                'organization_id': comision_id,
+                'person_id': person_id,
+                'role': 'Miembro',
+                'label': 'label',
+                }
+            mem = create_membership(data)
+   
 
 def senador_post(data):
     new_sen = {}
     contact_details = []
     memberships = []
     if 'name'in data:
-        new_sen['name'] = data['name']
-    if 'email' in data:
-        contact_details.append({
-            'type':'email',
-            'label': 'Correo Electronico',
-            'value': data['email'],
-            'note': ''
-            })
-    if 'phone' in data:
-         contact_details.append({
-            'type':'phone',
-            'label': 'Telefono',
-            'value': data['phone'],
-            'note': ''
-            })
-    new_sen['contact_details'] = contact_details 
-    result =  api.persons.post(new_sen)
-    if 'result' in result and 'id' in result['result']:
-        person_id = result['result']['id']
-        #print "senador", person_id 
-        if 'committees' in data:
-            for c in  data['committees']:
-                c['person_id'] = person_id
-                com = committees_post(c)
-            #print(com)    
-    
-   #return api.persons.post(new_sen)
+        sen_id = hashlib.sha1(data['name'].encode('latin-1')).hexdigest()
+        r = requests.get('http://test.popit.tdic:3000/api/v0.1/persons/' +sen_id)
+        if r.status_code == 404:
+            new_sen['id'] = sen_id        
+            new_sen['name'] = data['name']
+            if 'email' in data:
+                contact_details.append({
+                    'type':'email',
+                    'label': 'Correo Electronico',
+                    'value': data['email'],
+                    'note': ''
+                    })
+            if 'phone' in data:
+                 contact_details.append({
+                    'type':'phone',
+                    'label': 'Telefono',
+                    'value': data['phone'],
+                    'note': ''
+                    })
+            new_sen['contact_details'] = contact_details 
+            result =  api.persons.post(new_sen)
+            if 'result' in result and 'id' in result['result']:
+                person_id = result['result']['id']
+                if 'committees' in data:
+                    for c in  data['committees']:
+                        c['person_id'] = person_id
+                        com = committees_post(c)
+            
 
 senadores = mdb.senadores.find()
 for sen in senadores:
     senador = senador_post(sen)
-    #print(senador['result']['id'])
 
 
 
