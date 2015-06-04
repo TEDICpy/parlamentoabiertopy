@@ -16,7 +16,8 @@ source /<path to dir>/venv/bin/activate
 pip install beautifulsoup4
 pip install SQLAlchemy-0.9.9
 pip install selenium
-
+pip install requests
+ 
 2.1 Install PhantomJS
 Follow the instructions from:
     https://gist.github.com/julionc/7476620#file-install_phantomjs-sh
@@ -32,3 +33,4 @@ source /<path to dir>/venv/bin/activate
 
 3. Run scrapper
 python scrape.py
+
