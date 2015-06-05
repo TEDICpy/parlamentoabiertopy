@@ -18,6 +18,7 @@ class SilpyMongoClient(object):
         results = db_senadores.insert_many(senadores)# insert senadores, upsert maybe?
         return results
 
+    
     def update_senadores(self, senadores):
         db_senadores = self.db.senadores
         results = []
@@ -42,7 +43,22 @@ class SilpyMongoClient(object):
     def get_senator(self, id):
         return self.db.senadores.find_one({'id': str(id)})
         
+
+    def save_diputados(self, diputados):
+        db_diputados = self.db.diputados 
+        results = db_diputados.insert_many(diputados)
+        return results
+
+    def update_diputados(self, diputados):
+        db_diputados = self.db.diputados
+        results = []
+        for diputado in diputados:
+            result = db_diputados.update({'id':diputado['id']}, {'$set':diputado}, True)
+            results.append(result)
+        return results
+
     def save_articles(self, articles):
         db_articles = self.db.articles
         result = db_articles.insert_many(articles)
         return result
+

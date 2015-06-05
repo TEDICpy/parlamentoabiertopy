@@ -143,11 +143,15 @@ class SilpyHTMLParser(object):
         #the id increments for each section
         #TODO: count sections?
         projects = []
-        tabs_div = soup.find(id="formMain:j_idt90")
+        #ids are generated dynamically
+        #so wi search for the div with attr=role and value=tablist
+        #and extract its id
+        content_id = soup.find(id='formMain').find_all('div', {'role': 'tablist'})[0]['id']
+        tabs_div = soup.find(id=content_id)
         h3_list = tabs_div.find_all('h3', recursive=False)#number of tabs                         
        
         for i in range(0,len(h3_list)):
-            id="formMain:j_idt90:%i:dataTable_data" %(i)
+            id=content_id + ":%i:dataTable_data" %(i)
             tbody=soup.find(id=id)
             projects.append(self.parsear_lista_de_proyectos(tbody))
         return projects
@@ -418,11 +422,18 @@ class SilpyNavigator(object):
     Naviagation Flow for 
     """
 
-    def __init__(self):
+    def __init__(self, browser=None):
         self.parser = SilpyHTMLParser()
-        self.browser = utils.get_new_browser()
+        if browser:
+            self.browser=browser
+        else:
+            self.browser = utils.get_new_browser()
         self.browser.get("http://silpy.congreso.gov.py/main.pmf")
                                
+
+    def close_driver(self):
+       self.driver.close() 
+
     def make_webdriver_wait(self, by, waited_element):
         try:
             wait = WebDriverWait(self.browser, 15)
@@ -430,7 +441,7 @@ class SilpyNavigator(object):
             print "Page is ready! Loaded: " + waited_element
         
         except TimeoutException:
-            print "Loading took too much time!"
+            print "Loading took too much time! for element: " + waited_element
             
     def _make_driver_wait(self):
         try:
@@ -460,10 +471,16 @@ class SilpyNavigator(object):
         """returns the list of parlamentraries for the period 2008-2013
            @origin: S=senadores, D=diputados """
         #TODO: makte option selection with parameters
-        #for origin and period 
-        input = self.browser.find_element_by_id("formPreference:j_id16")
-        input.click()
+        #for origin and period
+        self._call_menu_item(u'Parlamentarios por Período')#from side menu
+        self.make_webdriver_wait(By.ID, "formPreference:j_id16")
+        # input = self.browser.find_element_by_id("formPreference:j_id16")
+        # input.click()
         self.make_webdriver_wait(By.ID, "formMain:idPeriodoLegislativo_input")
+#        formMain:idOrigen_input
+        select_camara_element = self.browser.find_element_by_id("formMain:idOrigen_input")
+        select_camara = Select(select_camara_element)
+        select_camara.select_by_value(origin)
         select_periodo = self.browser.find_element_by_id("formMain:idPeriodoLegislativo_input")
         select = Select(select_periodo)
         select.select_by_index(4)
@@ -591,26 +608,35 @@ class SilpyScrapper(object):
 
     def __init__(self):   
         self.periods = ['2013-2014', '2014-2015']
-        self.origins = ['D', 'S']#senadores
+        self.origins = ['D', 'S']
         self.navigator = SilpyNavigator()
         self.parser = SilpyHTMLParser()
         self.mongo_client = SilpyMongoClient()
 
-    def get_members_data(self):
-        data = self.navigator.get_parlamentary_list('S')
+    def close_navigator(self):
+        self.navigator.close_driver()
+
+    def get_members_data(self, origin):
+        data = self.navigator.get_parlamentary_list(origin)
         rows = self.parser.parse_parlamentary_data(data)
-        for s in rows:
-             member_id = s['id']
-             url='http://sil2py.senado.gov.py/formulario/verProyectosParlamentario.pmf'\
-                   +'?q=verProyectosParlamentario%2F' + member_id
-             response = urllib2.urlopen(url)
-             html = response.read()
-             args = {'id': s['id']
-                     ,'projects': self.parser.parse_projects_by_parlamentary(html)}
-             #download img
-             filename = 'img/'+ s['id']+ '.jpg'
-             urllib.urlretrieve(s['img'], filename)
-        self.mongo_client.update_senadores(rows)
+        for row in rows:
+            print 'procesando datos de: ' + row['name']
+            member_id = row['id']
+            url='http://sil2py.senado.gov.py/formulario/verProyectosParlamentario.pmf'\
+                +'?q=verProyectosParlamentario%2F' + member_id
+            response = urllib2.urlopen(url)
+            html = response.read()
+            args = {'id': row['id']
+                    ,'projects': self.parser.parse_projects_by_parlamentary(html)}
+            #download img
+            filename = 'img/'+ row['id']+ '.jpg'
+            urllib.urlretrieve(row['img'], filename)
+        if origin=='S':
+            print "Guardando datos de Senadores"
+            self.mongo_client.update_senadores(rows)
+        elif origin=='D':
+            print "Guardando datos de Diputados"
+            self.mongo_client.update_diputados(rows)
 
     def get_commiittees_by_period(self):
          periodo = '2014-2015'
@@ -648,8 +674,25 @@ class SilpyScrapper(object):
 #############
 ##TEST CODE## 
 #############
-#parser = SilpyHTMLParser()
-sc = SilpyScrapper()
-#sc.get_sessions_by_period()
-sc.get_members_data()
+import threading
+parser = SilpyHTMLParser()
+senadores_scrapper = SilpyScrapper()
+diputadossc_scrapper = SilpyScrapper()
+senadores_scrapper.get_members_data('S')
+diputadossc_scrapper.get_members_data('D')
+
+# try:
+#     thread.start_new_thread(senadores_scrapper.get_members_data('S'), ("Thread-1", 2, ) )
+#     thread.start_new_thread( diputadossc_scrapper.get_members_data('D'), ("Thread-2", 4, ) )
+# except:
+#     print "Error: unable to start thread"
+
+#sc.close_navigator()
 # sc.get_commiittees_by_period()
+# sc.get_sessions_by_period()
+# html = utils.read_file_as_string('resources/leyes_parlamentario.html')
+# soup = BeautifulSoup(html)
+# print soup.find(id='formMain').find_all('div', {'role': 'tablist'})[0]['id']
+
+# print parser.parse_projects_by_parlamentary(html)
+

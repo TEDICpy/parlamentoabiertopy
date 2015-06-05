@@ -8,7 +8,6 @@ Proyecto parlamentoabierto.org.py
 __author__ = "Ivan Florentin<ivan@sinergetica.com>"
 __version__ = "0.0.1"
 
-from popit_api import PopIt
 import slumber
 from requests.auth import AuthBase
 import pymongo
@@ -25,9 +24,9 @@ instance = 'test'
 hostname = 'test.popit.tdic'
 port = 3000
 api_version = 'v0.1' 
-user = "i@a.com"
-password = "asdqwe123"
-api_key = 'e221fbd3018b4be18556263f5ff1f58d0a592545' 
+user = "demian@sinergetica.com"
+password = "qwe123qwe"
+api_key = 'd73dd34ceb026ddf1d49592d849c6517147e4cb6' 
 
 
 class PopItApiKeyAuth(AuthBase):
@@ -42,7 +41,6 @@ url_string = 'http://' + hostname + ':' + str(port) + '/api/' + api_version
 api = slumber.API(url_string, auth=auth_key)
 
 def create_membership(data):
-
     organization_id = data['organization_id'] 
     person_id = data['person_id']
     membership_id = organization_id + person_id
