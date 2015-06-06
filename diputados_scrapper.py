@@ -3,10 +3,10 @@ import requests
 from bs4 import BeautifulSoup
 
 import utils
+from mongo_db import SilpyMongoClient
 
 #In this file we process data comming from
 #http://www.diputados.gov.py
-#TODO:
 
 class DiputadosScrapper(object):
     
@@ -16,30 +16,30 @@ class DiputadosScrapper(object):
     
     def get_member_list(self):
         url = 'http://www.diputados.gov.py/ww2/?pagina=dip-listado'
-        #response = requests.get(url)
-        html = utils.read_file_as_string('resources/diputados/lista.html')
-        soup = BeautifulSoup(html)#(response.text)
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text)
         table = soup.find('table', {'class':'tex'})
-        tr_list = table.tbody.find_all('tr', recursive=False)
+        tr_list = table.find_all('tr', recursive=False)
         tr_list.pop(0)#discard first row, header
         members = []
         for tr in tr_list:
             member = {}
             td_list = tr.find_all('td', recursive=False)
             id = td_list[0].img['src']
-            member['id'] = id[id.index('/')+2:id.index('.')]#
-            member['img_src'] = td_list[0].img['src']#so we can download image afterwards
+            member['diputado_id'] = id[id.rindex('/')+2:id.rindex('.')]
+            img = td_list[0].img['src']
+            member['img_src'] = 'http://www.diputados.gov.py/'+ img[img.index('/')] #so we can download image afterwards
             member['name'] = td_list[1].text.strip()
             member['link'] = td_list[1].a['href']
             members.append(member)
         return members
     
-    def get_member_detail(self, member):
-        #url = 'http://www.diputados.gov.py/ww2/index.php?pagina=cv&id=271'
-        html = utils.read_file_as_string('resources/diputados/detalle_diputado.html')
-        soup = BeautifulSoup(html)
-        tables = soup.find_all('table', {'class':'tex'})#the child table is the one we need
-        tbody = tables[1].find_all('tbody')[1]#and of course also the seccond tbody
+    def get_member_details(self, member_id):
+        url = 'http://www.diputados.gov.py/ww2/index.php?pagina=cv&id='+ member_id
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text)
+        tables = soup.find_all('table',{'class':'tex'})#the child table is the one we need
+        tbody = tables[1].table
         member = {}
         td_list = tbody.find_all('td')
         member['departament'] = td_list[1].text.strip()
@@ -54,23 +54,22 @@ class DiputadosScrapper(object):
         return member
         
     def get_member_cv(self, member_id):
-        #http://www.diputados.gov.py/ww2/index.php?pagina=cv-curriculum&id=271
-        html = utils.read_file_as_string('resources/diputados/detalle_diputado_cv.html')
-        soup = BeautifulSoup(html)
-        table = soup.find('table', {'class':'tex'})
+        url = 'http://www.diputados.gov.py/ww2/index.php?pagina=cv-curriculum&id=' + member_id 
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text)
         tables = soup.find_all('table', {'class':'tex'})#the child table is the one we need
-        tbody = tables[1].tbody
-        #return raw, not much to do with this right now as all cv data is structured differentyl
-        return str(tbody)
-    
-    def get_member_committees(self, member):
-        #http://www.diputados.gov.py/ww2/index.php?pagina=cv-comisiones&id=271    
-        html = utils.read_file_as_string('resources/diputados/detalle_diputado_comisiones.html')
-        soup = BeautifulSoup(html)
-        table = soup.find('table', {'class':'tex'})
-        tables = soup.find_all('table', {'class':'tex'})#the child table is the one we need
-        tbody = tables[1].tbody
-        print tbody
+        #return as plain text
+        return tables[1].getText()
+
+    #deprecated: extracted from silpy
+    # def get_member_committees(self, member_id):
+    #     
+    #     url = 'http://www.diputados.gov.py/ww2/index.php?pagina=cv-comisiones&id='+member_id
+    #     response = requests.get(url)
+    #     soup = BeautifulSoup(response.text)        
+    #     table = soup.find('table', {'class':'tex'})
+    #     tables = soup.find_all('table', {'class':'tex'})#the child table is the one we need
+    #     tbody = tables[1].tbody
 
     def get_articles(self):
         day = '21'
@@ -81,7 +80,16 @@ class DiputadosScrapper(object):
                              'anho': (None, year), 'sb': (None, '1'), 
                              'btnBuscar': (None, 'Buscar')})
 
-
-ds = DiputadosScrapper()
-#members = ds.get_member_list()
-ds.get_member_committees('id')
+    def get_members_data(self):
+        mongo_client = SilpyMongoClient()
+        ds = DiputadosScrapper()
+        members = ds.get_member_list()
+        for m in members:
+            print "Procesando diputado " + m['name']
+            id = m['diputado_id']
+            m.update(ds.get_member_details(id))
+            cv = ds.get_member_cv(id)
+            m['cv'] = cv
+            mongo_client.update_diputado_by_name(m)
+    
+#print ds.get_member_details(dict(diputado_id='271'))

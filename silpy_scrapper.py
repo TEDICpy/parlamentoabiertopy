@@ -98,7 +98,9 @@ class SilpyHTMLParser(object):
             row = {}
             td_list = tr.find_all("td")
             row['index'] = td_list[0].text.strip()
-            row['name'] = td_list[2].text.strip()
+            name = td_list[2].text.strip()
+            row['name'] = name[:name.index('-')].strip()
+            row['party'] = name[name.index('-')+1:].strip()
             row['projects_body_param'] = td_list[4].text.strip() #parameter to invoke projects 
             row_index = int(row['index'])-1
             #extraction of MP id
@@ -311,7 +313,7 @@ class SilpyHTMLParser(object):
         for tr in tr_list:
             comision = {}
             td_list = tr.find_all('td', recursive=False)
-            comision['denominacion'] = td_list[1].text.strip()
+            comision['name'] = td_list[1].text.strip()
             comision['type']  = td_list[2].text.strip()
             comision['chamber'] = td_list[3].text.strip()
             comision['member_js_call'] = td_list[4].div.button['onclick']
@@ -352,7 +354,6 @@ class SilpyHTMLParser(object):
             tramitacion['index'] = td_list[0].text.strip()
             tramitacion['session'] = td_list[1].text.strip()
             tramitacion['date'] = td_list[2].text.strip()
-
             #TODO: extraccion de etapa se puede generalizar
             if len(td_list) >= 1:
                 td1 = td_list[3]
@@ -428,24 +429,27 @@ class SilpyNavigator(object):
             self.browser=browser
         else:
             self.browser = utils.get_new_browser()
-        self.browser.get("http://silpy.congreso.gov.py/main.pmf")
-                               
+        self.browser.get("http://silpy.congreso.gov.py/main.pmf")                               
 
     def close_driver(self):
-       self.driver.close() 
+       self.browser.close() 
 
-    def make_webdriver_wait(self, by, waited_element):
+    def make_webdriver_wait(self, by, waited_element, browser=None):
         try:
-            wait = WebDriverWait(self.browser, 15)
+            if browser == None:
+                browser = self.browser
+            wait = WebDriverWait(browser, 15)
             wait.until(EC.presence_of_element_located((by, waited_element)))
             print "Page is ready! Loaded: " + waited_element
         
         except TimeoutException:
             print "Loading took too much time! for element: " + waited_element
             
-    def _make_driver_wait(self):
+    def wait_for_document_ready(self, browser = None):
         try:
-            wait = WebDriverWait(self.browser, 15)
+            if browser == None:
+                browser = self.browser
+            wait = WebDriverWait(browser, 15)
             wait.until(utils._wait_document_ready, self.browser)
         except TimeoutException:
             print "Loading took too much time!"
@@ -474,10 +478,8 @@ class SilpyNavigator(object):
         #for origin and period
         self._call_menu_item(u'Parlamentarios por Período')#from side menu
         self.make_webdriver_wait(By.ID, "formPreference:j_id16")
-        # input = self.browser.find_element_by_id("formPreference:j_id16")
-        # input.click()
+
         self.make_webdriver_wait(By.ID, "formMain:idPeriodoLegislativo_input")
-#        formMain:idOrigen_input
         select_camara_element = self.browser.find_element_by_id("formMain:idOrigen_input")
         select_camara = Select(select_camara_element)
         select_camara.select_by_value(origin)
@@ -501,7 +503,18 @@ class SilpyNavigator(object):
         url='http://sil2py.senado.gov.py/formulario/verProyectosParlamentario.pmf'\
           +'?q=verProyectosParlamentario%2F' + member_id
         self.browser.get(url)
-        return self.browser.page_source
+        self.wait_for_document_ready()
+        html = self.browser.page_source
+        s = BeautifulSoup(html)
+        if s.getText().find('UPS...') != -1:
+            #load main page and needed cookes with it
+            print 'La sesión de la consulta ha expirado!'
+            self.browser.get('http://sil2py.senado.gov.py/main.pmf')
+            self.browser.get(url)
+            self.wait_for_document_ready()
+            html = self.browser.page_source
+#        browser.close()
+        return html
 
     def buscar_comisiones_por_periodo(self, period):
         #este item prrobablemente deberia ser todo un ciclo de navegacion
@@ -543,7 +556,7 @@ class SilpyNavigator(object):
     #origin = D(diputados), S(senadores)
     def list_sessions_by_period(self, origin, period):
         self._call_menu_item(u'Sesiones por Período')
-        self._make_driver_wait()
+        self.wait_for_document_ready()
         self.make_webdriver_wait(By.ID, "formMain:idOrigen_input")
         select_camara_element = self.browser.find_element_by_id("formMain:idOrigen_input")
         select_camara = Select(select_camara_element)
@@ -554,7 +567,7 @@ class SilpyNavigator(object):
         select_periodo.select_by_visible_text(period)
         self.browser.execute_script("PrimeFaces.ab({source:'formMain:cmdBuscar'" +\
                                     ",update:'formMain'});return false;")
-        self._make_driver_wait()
+        self.wait_for_document_ready()
         number_of_rows = self.count_table_rows()
         #we wait for the button in the lat row 
         #Ex: formMain:dataTable:53:toggle
@@ -579,6 +592,7 @@ class SilpyNavigator(object):
         pass
 
     def buscar_proyectos_por_comision(self):
+        #TODO
         # 1 - seleccionar del menu principal Proyectos por Comisión
         # 2 - seleccionar camara (Diputados o Senadores)
         # 3 - Click en boton de buscar.
@@ -620,14 +634,11 @@ class SilpyScrapper(object):
         data = self.navigator.get_parlamentary_list(origin)
         rows = self.parser.parse_parlamentary_data(data)
         for row in rows:
-            print 'procesando datos de: ' + row['name']
             member_id = row['id']
-            url='http://sil2py.senado.gov.py/formulario/verProyectosParlamentario.pmf'\
-                +'?q=verProyectosParlamentario%2F' + member_id
-            response = urllib2.urlopen(url)
-            html = response.read()
-            args = {'id': row['id']
-                    ,'projects': self.parser.parse_projects_by_parlamentary(html)}
+            print 'procesando datos de: %s con id %s ' %(row['name'], member_id)
+            html = self.navigator.get_member_projects(member_id)
+            args = {'id': row['id'],
+                    'projects': self.parser.parse_projects_by_parlamentary(html)}
             #download img
             filename = 'img/'+ row['id']+ '.jpg'
             urllib.urlretrieve(row['img'], filename)
@@ -669,30 +680,4 @@ class SilpyScrapper(object):
            #                                        attachment['nombre'])
            #find and call button_id
            #call and extract proyectos
-
-            
-#############
-##TEST CODE## 
-#############
-import threading
-parser = SilpyHTMLParser()
-senadores_scrapper = SilpyScrapper()
-diputadossc_scrapper = SilpyScrapper()
-senadores_scrapper.get_members_data('S')
-diputadossc_scrapper.get_members_data('D')
-
-# try:
-#     thread.start_new_thread(senadores_scrapper.get_members_data('S'), ("Thread-1", 2, ) )
-#     thread.start_new_thread( diputadossc_scrapper.get_members_data('D'), ("Thread-2", 4, ) )
-# except:
-#     print "Error: unable to start thread"
-
-#sc.close_navigator()
-# sc.get_commiittees_by_period()
-# sc.get_sessions_by_period()
-# html = utils.read_file_as_string('resources/leyes_parlamentario.html')
-# soup = BeautifulSoup(html)
-# print soup.find(id='formMain').find_all('div', {'role': 'tablist'})[0]['id']
-
-# print parser.parse_projects_by_parlamentary(html)
 

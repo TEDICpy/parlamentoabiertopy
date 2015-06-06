@@ -63,7 +63,7 @@ class SenadoresParser(object):
         projects = []
         soup = BeautifulSoup(data)
         cv = soup.find(id = '2-1-curriculum-vitae')#save as chunk of data?
-        return str(cv)
+        return cv.getText()
         
     def parse_senator_committees(self, html):      
         soup = BeautifulSoup(html)
@@ -199,12 +199,12 @@ class SenadoresScrapper(object):
         committees = self.parser.parse_senator_committees(data)
         #extracts dictamenes
         dictamenes = self.parser.parse_dictamenes(data)
-        cv_raw = self.parser.parse_senator_info(data)
+        cv = self.parser.parse_senator_info(data)
         proyectos = self.parser.parse_senator_presented_projects(data)
         senator.update({'projects': proyectos,
                         'committees': committees,
                         'rulings': dictamenes,
-                        'cv_raw': cv_raw})        
+                        'cv': cv})        
         return senator
 
     def get_all_articles(self):
@@ -255,10 +255,6 @@ class SenadoresScrapper(object):
 
 
 #parser = SenadoresParser()
-scrapper = SenadoresScrapper()
-scrapper.extract_senators_data()
-scrapper.get_all_articles()
-
 
 #this is not vaild, session are only reachable through silpy
 # container= 'formMain:j_idt98:'#the parent container
