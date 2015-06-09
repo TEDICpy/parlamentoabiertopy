@@ -1,20 +1,21 @@
-from silpy_scrapper import SilpyScrapper
-from senadores_scrapper import SenadoresScrapper
-from diputados_scrapper import DiputadosScrapper
-
+from scrapping.silpy_scrapper import SilpyScrapper
+from scrapping.senadores_scrapper import SenadoresScrapper
+from scrapping.diputados_scrapper import DiputadosScrapper
 
 if __name__ == "__main__":
-    senadores_scrapper = SilpyScrapper()
-    diputadossc_scrapper = SilpyScrapper()
+    silpy_senadores = SilpyScrapper()
+    silpy_diputados = SilpyScrapper()
 
-    senadores_scrapper.get_members_data('S')
-    senadores_scrapper.close_navigator()
+    silpy_senadores.get_members_data('S')
+    silpy_senadores.close_navigator()
 
-    diputadossc_scrapper.get_members_data('D')
-    diputadossc_scrapper.close_navigator()
+    silpy_diputados.get_members_data('D')
+    silpy_diputados.close_navigator()
 
-    scrapper = SenadoresScrapper()
-    scrapper.extract_senators_data()
-    scrapper.get_all_articles()
+    senadores_scrapper = SenadoresScrapper()
+    senadores_scrapper.get_all_articles()
+    senadores_scrapper.extract_senators_data()
 
+    diputados_scrapper = DiputadosScrapper()
+    diputados_scrapper.get_members_data()
 

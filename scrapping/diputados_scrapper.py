@@ -2,8 +2,8 @@
 import requests
 from bs4 import BeautifulSoup
 
-import utils
-from mongo_db import SilpyMongoClient
+from utils import utils
+from db.mongo_db import SilpyMongoClient
 
 #In this file we process data comming from
 #http://www.diputados.gov.py

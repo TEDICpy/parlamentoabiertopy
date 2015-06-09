@@ -10,7 +10,7 @@ import urllib
 import unicodedata
 from bs4 import BeautifulSoup
 
-import utils
+from utils import utils
                                
 application_x_www_form_urlencoded='application/x-www-form-urlencoded'
 headers = {}
@@ -138,7 +138,7 @@ from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.by import By
 
-from mongo_db import SilpyMongoClient
+from db.mongo_db import SilpyMongoClient
 
 class SenadoresScrapper(object):
 
@@ -167,6 +167,7 @@ class SenadoresScrapper(object):
         data = self.browser.page_source
         senadores = self.parser.parse_senator_list(data)
         #self.mongo.update_senadores(senadores)
+        self.browser.close()
         return senadores
 
     def _wait_document_ready(self, something):
@@ -185,8 +186,9 @@ class SenadoresScrapper(object):
             #merge senator data from web and db
             senator.update(s)
             #update senator to db
-            self.mongo.update_senador(senator)
-            
+            self.mongo.update_senador(senator)        
+        self.browser.close()
+
     def get_member_info(self, senator):
         id = senator['id']
         url="http://www.senado.gov.py/index.php/lista-de-curriculum/68-curriculum?id_parla=%s" %(id)
@@ -265,8 +267,6 @@ class SenadoresScrapper(object):
         #los dictamenes de cada senador se cargan al llamar al tab de dictamenes
         url = 'http://www.senado.gov.py/index.php/lista-de-curriculum/68-curriculum?id_parla=100056#2-6-dict%C3%A1menes'
 
-scrapper = SenadoresScrapper()
-scrapper.get_all_articles()
 
 #parser = SenadoresParser()
 #this is not vaild, session are only reachable through silpy

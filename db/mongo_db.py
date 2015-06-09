@@ -1,12 +1,12 @@
 from pymongo import MongoClient
 
-client = MongoClient('localhost', 27017)
+client = MongoClient('192.168.122.1', 27017)
 
-class SilpyMongoClient(object):    
+class SilpyMongoClient(object):
 
     def __init__(self):
         #connect to the database
-        self.db = client.silpy_test
+        self.db = client.silpy01
         
     def save_projects(self, projects):
         db_projects = self.db.projects #initialize collection

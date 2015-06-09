@@ -9,12 +9,13 @@ import httplib
 import json
 import urllib
 import hashlib 
-import utils
 import requests
 import unicodedata
 from bs4 import BeautifulSoup, CData
 from HTMLParser import HTMLParser
 import time
+
+from utils import utils
 
 from request_content import committee_item_data
 
@@ -615,7 +616,7 @@ class SilpyNavigator(object):
 #######################
 ### MainApp Section ###
 #######################
-from mongo_db import SilpyMongoClient
+from db.mongo_db import SilpyMongoClient
 import urllib2
 
 class SilpyScrapper(object):
@@ -640,7 +641,7 @@ class SilpyScrapper(object):
             args = {'id': row['id'],
                     'projects': self.parser.parse_projects_by_parlamentary(html)}
             #download img
-            filename = 'img/'+ row['id']+ '.jpg'
+            filename = 'download/img/'+ row['id']+ '.jpg'
             urllib.urlretrieve(row['img'], filename)
         if origin=='S':
             print "Guardando datos de Senadores"
