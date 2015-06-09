@@ -1,8 +1,9 @@
 import click
 
-from scrapping.silpy_scrapper import SilpyScrapper
-from scrapping.senadores_scrapper import SenadoresScrapper
-from scrapping.diputados_scrapper import DiputadosScrapper
+from scrapper.silpy_scrapper import SilpyScrapper
+from scrapper.senadores_scrapper import SenadoresScrapper
+from scrapper.diputados_scrapper import DiputadosScrapper
+
 
 @click.group()
 def cli():
@@ -26,7 +27,6 @@ def all():
 
     diputados_scrapper = DiputadosScrapper()
     diputados_scrapper.get_members_data()
-
 
 @click.command(help='extrae solo los datos de los senadores')
 def senadores():

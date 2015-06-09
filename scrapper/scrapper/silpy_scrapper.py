@@ -17,54 +17,6 @@ import time
 
 from utils import utils
 
-from request_content import committee_item_data
-
-
-def write_html(html):
-
-    name = "error/" + hashlib.sha224(html).hexdigest()+".html"
-    f = open(name, "w")
-    f.write(html)
-    f.flush()
-    f.close()
-    
-
-import functools
-class updateViewState(object):
-
-    def __init__(self, f):
-        self.f = f
-
-    def __call__(self, *args, **kwargs):
-        self.clss = args[0]
-        html = ''
-        try:
-            html =  kwargs['html']
-        except:
-            raise Exception("The decorated method must be invoked with an 'html' named parameter.")
-
-        self._updated_viewState(html)
-        self.f(*args, **kwargs)
-            
-    def __get__(self, obj, objtype):
-        return functools.partial(self.__call__, obj)
-
-    def _updated_viewState(self, html):
-        #viewStates might be embbedded inside <input> or <update> 
-        #and it changes according to the navigation
-        soup = BeautifulSoup(html)
-        viewState_container = soup.find(id="javax.faces.ViewState")
-        viewState = None
-        if viewState_container.name == 'input': 
-            viewState = viewState_container['value']
-        elif viewState_container.name == 'update':
-            viewstate = viewState_container.text 
-        
-        if self.clss.viewState != viewState:
-            print "replacing viewstates: oldval: " + self.clss.viewState + ' | newval: ' +viewState
-            self.clss.viewState = viewState
-
-
 class SilpyHTMLParser(object):
 
     def extraer_items_menu(self, html):
