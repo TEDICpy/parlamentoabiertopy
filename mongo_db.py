@@ -69,6 +69,16 @@ class SilpyMongoClient(object):
         result = db_diputados.update({'name':diputado['name']}, {'$set':diputado}, True)
         return result
 
+    def get_article_by_url(self, url):
+        db_articles = self.db.articles
+        article = db_articles.find_one({"url":url})
+        return article
+    
+    def save_article(self, article):
+        db_articles = self.db.articles
+        result = db_articles.insert(article)
+        return result
+    
     def save_articles(self, articles):
         db_articles = self.db.articles
         result = db_articles.insert_many(articles)

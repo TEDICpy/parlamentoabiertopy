@@ -129,7 +129,7 @@ class SenadoresParser(object):
                 dictamenes.append(dictamen)            
         return dictamenes
 
-
+import sys
 import httplib
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
@@ -190,7 +190,6 @@ class SenadoresScrapper(object):
     def get_member_info(self, senator):
         id = senator['id']
         url="http://www.senado.gov.py/index.php/lista-de-curriculum/68-curriculum?id_parla=%s" %(id)
-        #url_proyectos = base_url + "index.php/lista-de-curriculum/68-curriculum?id_parla=%s#2-3-proyectos-presentados" %(id)
         self.browser.get(url)
         self.make_webdriver_wait(By.CLASS_NAME, "IN-widget")
 
@@ -215,6 +214,12 @@ class SenadoresScrapper(object):
         # limit 5 for last 5 news
         #the table with the class="table table-striped table-bordered"
         #contains the data
+        # Other Parameters:  
+        # filter-search:""
+        # filter_order:""
+        # filter_order_Dir:""
+        # limitstart:""
+        host = 'http://www.senado.gov.py'
         headers = {'Content-Type': 'application/x-www-form-urlencoded'}
         headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:21.0) Gecko/20100101 Firefox/21.0'
 
@@ -223,7 +228,7 @@ class SenadoresScrapper(object):
         conn.connect()
         #first retrieve list of news
         request = conn.request('POST', '/index.php/noticias',
-                               'limit=5', headers)
+                               'limit=0', headers)
         response = conn.getresponse()
         data = response.read()
         #extract data from the table where the  news are presented
@@ -232,30 +237,38 @@ class SenadoresScrapper(object):
         tr_list = table.tbody.find_all('tr', recursive=False)
 
         #iterate over the list of news to extract each row
-        articles = []
-        for tr in tr_list:    
-            url = tr.a['href']
-            td_list = tr.find_all('td', recursive=False)
-            article = {'date': td_list[1].text.strip()}
-            #call the url
-            request = conn.request('POST', url, 'limit=5', headers)
-            response = conn.getresponse()
-            data = response.read()
-            news_soup = BeautifulSoup(data)
-            article_html = news_soup.find('article', {'class': 'article fulltext '})
-            article['content'] = str(article_html)
-            articles.append(article)
-        conn.close()
-        print self.mongo.save_articles(articles)
+        for tr in tr_list:
+            url = host + tr.a['href']
+            article = self.mongo.get_article_by_url(url)
+            if article == None:
+                td_list = tr.find_all('td', recursive=False)
+                article = {'date': td_list[1].text.strip()}
+                article['url'] = url
+                url = url.encode('utf-8')
+                #call the url
+                try:
+                    #urls may contain non ascii characters
+                    request = conn.request('POST', url, 'limit=5', headers)
+                    response = conn.getresponse()
+                    data = response.read()
+                    news_soup = BeautifulSoup(data)
+                    article_html = news_soup.find('article', {'class': 'article fulltext '})
+                    article['content'] = article_html.getText().encode('utf-8')
+                    self.mongo.save_article(article)
+                except:
+                    print "Failed extracting data from %s" %(article['url'])
+            
+        conn.close()        
         
     def obtener_dictamenes_de_senador(self, id):
         #id_parla
         #los dictamenes de cada senador se cargan al llamar al tab de dictamenes
         url = 'http://www.senado.gov.py/index.php/lista-de-curriculum/68-curriculum?id_parla=100056#2-6-dict%C3%A1menes'
 
+scrapper = SenadoresScrapper()
+scrapper.get_all_articles()
 
 #parser = SenadoresParser()
-
 #this is not vaild, session are only reachable through silpy
 # container= 'formMain:j_idt98:'#the parent container
 # #the subsections with the actual data of each tab
@@ -267,3 +280,4 @@ class SenadoresScrapper(object):
 
 # print sections
 #general header configuration 
+
