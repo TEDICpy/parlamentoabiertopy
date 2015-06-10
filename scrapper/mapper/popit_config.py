@@ -2,13 +2,12 @@
 PopIt Mapper Config File
 """
 
-
 instance = 'parlamento'
 hostname = 'parlamento.popit.parlamentoabierto.org.py'
 port = 3000
 api_version = 'v0.1' 
 # Al parecer los proximos 2 parametros no se usan
-user = "demian@tedic.com"
+user = "demian@tedic.org"
 password = "popitdevel" 
 #-----
 

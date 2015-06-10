@@ -584,8 +584,10 @@ class SilpyScrapper(object):
         self.navigator.close_driver()
 
     def get_members_data(self, origin):
+        print 'ready to extract data'
         data = self.navigator.get_parlamentary_list(origin)
         rows = self.parser.parse_parlamentary_data(data)
+        print rows
         for row in rows:
             member_id = row['id']
             print 'procesando datos de: %s con id %s ' %(row['name'], member_id)
@@ -601,7 +603,7 @@ class SilpyScrapper(object):
         elif origin=='D':
             print "Guardando datos de Diputados"
             self.mongo_client.update_diputados(rows)
-
+            
     def get_commiittees_by_period(self):
          periodo = '2014-2015'
          comisiones_periodo = self.navigator.buscar_comisiones_por_periodo()

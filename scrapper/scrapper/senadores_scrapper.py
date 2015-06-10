@@ -167,7 +167,6 @@ class SenadoresScrapper(object):
         data = self.browser.page_source
         senadores = self.parser.parse_senator_list(data)
         #self.mongo.update_senadores(senadores)
-        self.browser.close()
         return senadores
 
     def _wait_document_ready(self, something):
@@ -182,19 +181,21 @@ class SenadoresScrapper(object):
             id = s['id']
             s = self.get_member_info(s)
             #retrieve senator from db
-            senator = self.mongo.get_senator(id)
+            #senator = self.mongo.get_senator(id)
             #merge senator data from web and db
-            senator.update(s)
+            #senator.update(s)
             #update senator to db
-            self.mongo.update_senador(senator)        
+            self.mongo.update_senador(s)
+            
         self.browser.close()
 
     def get_member_info(self, senator):
         id = senator['id']
+        print 'obteniendo info de senador ' + senator['name'] 
         url="http://www.senado.gov.py/index.php/lista-de-curriculum/68-curriculum?id_parla=%s" %(id)
         self.browser.get(url)
         self.make_webdriver_wait(By.CLASS_NAME, "IN-widget")
-
+        self.make_webdriver_wait(By.ID, "2-1-curriculum-vitae")
         data = self.browser.page_source
         #extracts comisiones
         committees = self.parser.parse_senator_committees(data)
@@ -205,7 +206,7 @@ class SenadoresScrapper(object):
         senator.update({'projects': proyectos,
                         'committees': committees,
                         'rulings': dictamenes,
-                        'cv': cv})        
+                        'cv': cv})
         return senator
 
     def get_all_articles(self):
@@ -266,18 +267,4 @@ class SenadoresScrapper(object):
         #id_parla
         #los dictamenes de cada senador se cargan al llamar al tab de dictamenes
         url = 'http://www.senado.gov.py/index.php/lista-de-curriculum/68-curriculum?id_parla=100056#2-6-dict%C3%A1menes'
-
-
-#parser = SenadoresParser()
-#this is not vaild, session are only reachable through silpy
-# container= 'formMain:j_idt98:'#the parent container
-# #the subsections with the actual data of each tab
-# sections_names = ['diarioSesion', 'asuntosEntrados', 'ordenDia', 'acta', 'resultadoSesion']
-# sections = {}
-# for section in sections_names:
-#     current = soup.find(id=container+section)
-#     sections[section] = current
-
-# print sections
-#general header configuration 
 

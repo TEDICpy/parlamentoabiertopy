@@ -15,6 +15,7 @@ class DiputadosScrapper(object):
     # Datos Currículum Comisiones Proyectos» Contactos 
     
     def get_member_list(self):
+        print 'Obeteniendo la lista de diputados'
         url = 'http://www.diputados.gov.py/ww2/?pagina=dip-listado'
         response = requests.get(url)
         soup = BeautifulSoup(response.text)
@@ -39,9 +40,14 @@ class DiputadosScrapper(object):
         response = requests.get(url)
         soup = BeautifulSoup(response.text)
         tables = soup.find_all('table',{'class':'tex'})#the child table is the one we need
+        #we do this to extract the same member id used in silpy
+        td_list = tables[0].tr('td', recursive=False)
+        href = td_list[3].a['href']
+        id = href[href.rfind('%2F')+3:]
         tbody = tables[1].table
         member = {}
         td_list = tbody.find_all('td')
+        member['id'] = id.strip()
         member['departament'] = td_list[1].text.strip()
         member['city'] = td_list[3].text.strip()
         member['party'] = td_list[5].text.strip()
@@ -59,7 +65,10 @@ class DiputadosScrapper(object):
         soup = BeautifulSoup(response.text)
         tables = soup.find_all('table', {'class':'tex'})#the child table is the one we need
         #return as plain text
-        return tables[1].getText()
+        cv = None
+        if len(tables) > 0:
+             cv = tables[1].getText()
+        return cv
 
     #deprecated: extracted from silpy
     # def get_member_committees(self, member_id):
@@ -82,14 +91,14 @@ class DiputadosScrapper(object):
 
     def get_members_data(self):
         mongo_client = SilpyMongoClient()
-        ds = DiputadosScrapper()
-        members = ds.get_member_list()
+        members = self.get_member_list()
         for m in members:
             print "Procesando diputado " + m['name']
             id = m['diputado_id']
-            m.update(ds.get_member_details(id))
-            cv = ds.get_member_cv(id)
+            m.update(self.get_member_details(id))
+            cv = self.get_member_cv(id)
             m['cv'] = cv
-            mongo_client.update_diputado_by_name(m)
+            result = mongo_client.update_diputado(m)
+            
     
 #print ds.get_member_details(dict(diputado_id='271'))

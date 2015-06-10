@@ -35,8 +35,9 @@ def senadores():
     silpy_senadores.get_members_data('S')
     silpy_senadores.close_navigator()
     senadores_scrapper = SenadoresScrapper()
-    senadores_scrapper.get_all_articles()
     senadores_scrapper.extract_senators_data()
+    #senadores_scrapper.get_all_articles()
+
 
 @click.command(help="extrae solo los datos de los diputados")
 def diputados():

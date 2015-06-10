@@ -6,6 +6,7 @@ SQLAlchemy-0.9.9
 Selemium
 PhantomJS
 Slumber
+PopIt-Python
 
 Installation
 ----------------
@@ -19,6 +20,7 @@ pip install PyMongo
 pip install selenium
 pip install requests
 pip install slumber 
+pip install PopIt-Python
 
 2.1 Install PhantomJS
 Follow the instructions from:
