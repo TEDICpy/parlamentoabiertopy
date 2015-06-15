@@ -348,7 +348,6 @@ class SilpyHTMLParser(object):
         #numero de registros encontrados en la tabla
         #aparentemente se utiliza la misma clase css en diferentes tablas
         soup = BeautifulSoup(html)
-        #print soup.find(id='formMain:dataTable')
         th = soup.find('th', {'class':"ui-datatable-header ui-widget-header"}) 
         text = th.table.tbody.tr.td.text
         number_of_rows = text[0 : text.index('registros recuperados')]
@@ -366,7 +365,7 @@ class SilpyHTMLParser(object):
 
 
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support import expected_conditions as E
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.by import By
@@ -387,6 +386,7 @@ class SilpyNavigator(object):
     def close_driver(self):
        self.browser.close() 
 
+    #deprecated
     def make_webdriver_wait(self, by, waited_element, browser=None):
         try:
             if browser == None:
@@ -397,21 +397,12 @@ class SilpyNavigator(object):
         
         except TimeoutException:
             print "Loading took too much time! for element: " + waited_element
-            
-    def wait_for_document_ready(self, browser = None):
-        try:
-            if browser == None:
-                browser = self.browser
-            wait = WebDriverWait(browser, 15)
-            wait.until(utils._wait_document_ready, self.browser)
-        except TimeoutException:
-            print "Loading took too much time!"
-       
+                   
     def count_table_rows(self):
         #wait for css_element
         #TODO: css element as parameter
         css_element = ".ui-widget-content.ui-datatable-even"
-        self.make_webdriver_wait(By.CSS_SELECTOR, css_element)
+        utils.make_webdriver_wait(By.CSS_SELECTOR, css_element, self.browser)
         return self.parser.number_of_rows_found(self.browser.page_source)
         
     def _call_menu_item(self, item_text):
@@ -430,9 +421,11 @@ class SilpyNavigator(object):
         #TODO: makte option selection with parameters
         #for origin and period
         self._call_menu_item(u'Parlamentarios por Período')#from side menu
-        self.make_webdriver_wait(By.ID, "formPreference:j_id16")
+        utils.make_webdriver_wait(By.ID, "formPreference:j_id16", self.browser)
 
-        self.make_webdriver_wait(By.ID, "formMain:idPeriodoLegislativo_input")
+        utils.make_webdriver_wait(By.ID, 
+                                  "formMain:idPeriodoLegislativo_input",
+                                  self.browser)
         select_camara_element = self.browser.find_element_by_id("formMain:idOrigen_input")
         select_camara = Select(select_camara_element)
         select_camara.select_by_value(origin)
@@ -445,18 +438,22 @@ class SilpyNavigator(object):
         #WARNING: this is a bug
         # the css class .ui-widget-content.ui-datatable-even can be even or odd depending on the number of rows
         #use 'data-ri' instead of css ?
-        self.make_webdriver_wait(By.CSS_SELECTOR, '.ui-widget-content.ui-datatable-even')#".ui-datatable-header.ui-widget-header")
+        utils.make_webdriver_wait(By.CSS_SELECTOR, 
+                                  '.ui-widget-content.ui-datatable-even',
+                                  self.browser)#".ui-datatable-header.ui-widget-header")
         number_of_rows = self.parser.number_of_rows_found(self.browser.page_source) #extraemos la cantidad de registros encontrados
         #esperamos por la aparicion del ultimo registro en base a su css
         last_row_id = "formMain:dataTable:%s:j_idt92" %(str(number_of_rows - 1))
-        self.make_webdriver_wait(By.ID, last_row_id)
+        utils.make_webdriver_wait(By.ID, last_row_id, self.browser)
         return self.browser.page_source 
 
     def get_member_projects(self, member_id):
         url='http://sil2py.senado.gov.py/formulario/verProyectosParlamentario.pmf'\
           +'?q=verProyectosParlamentario%2F' + member_id
         self.browser.get(url)
-        self.wait_for_document_ready()
+        utils.wait_for_document_ready(self.browser)
+#        #self.wait_for_document_ready(
+        utils.wait_for_document_ready(self.browser)
         html = self.browser.page_source
         s = BeautifulSoup(html)
         if s.getText().find('UPS...') != -1:
@@ -464,7 +461,8 @@ class SilpyNavigator(object):
             print 'La sesión de la consulta ha expirado!'
             self.browser.get('http://sil2py.senado.gov.py/main.pmf')
             self.browser.get(url)
-            self.wait_for_document_ready()
+            #self.wait_for_document_ready(
+            utils.wait_for_document_ready(self.browser)
             html = self.browser.page_source
 #        browser.close()
         return html
@@ -480,7 +478,9 @@ class SilpyNavigator(object):
         # 7- Parser: Extraer datos del resultado de (6)
         # 8- Cerrar pop up (7) y repetir desde 6 con el siguiente item
         self._call_menu_item(u'Comisiones por Período')
-        self.make_webdriver_wait(By.ID, "formMain:idPeriodoParlamentario_input")
+        utils.make_webdriver_wait(By.ID, 
+                                  "formMain:idPeriodoParlamentario_input",
+                                  self.browser)
         select_camara_element = self.browser.find_element_by_id("formMain:idOrigen_input")
         select_camara = Select(select_camara_element)
         select_camara.select_by_index(1)#TODO: recibir el origen como parametro
@@ -493,7 +493,7 @@ class SilpyNavigator(object):
         #esperar por el resultado
         rows_found = self.count_table_rows()
         waited_element = "formMain:dataTable:%s:j_idt101" % (rows_found)
-        self.make_webdriver_wait(By.ID, waited_element)
+        utils.make_webdriver_wait(By.ID, waited_element)
         #parseo de resultado
         comisiones = self.parser.extraer_comisiones_por_periodo(self.browser.page_source)
         #invocar a integrantes_js_call
@@ -509,8 +509,9 @@ class SilpyNavigator(object):
     #origin = D(diputados), S(senadores)
     def list_sessions_by_period(self, origin, period):
         self._call_menu_item(u'Sesiones por Período')
-        self.wait_for_document_ready()
-        self.make_webdriver_wait(By.ID, "formMain:idOrigen_input")
+        #self.wait_for_document_ready(
+        utils.wait_for_document_ready(self.browser)
+        utils.make_webdriver_wait(By.ID, "formMain:idOrigen_input", self.browser)
         select_camara_element = self.browser.find_element_by_id("formMain:idOrigen_input")
         select_camara = Select(select_camara_element)
         select_camara.select_by_value(origin)
@@ -520,12 +521,13 @@ class SilpyNavigator(object):
         select_periodo.select_by_visible_text(period)
         self.browser.execute_script("PrimeFaces.ab({source:'formMain:cmdBuscar'" +\
                                     ",update:'formMain'});return false;")
-        self.wait_for_document_ready()
+        #self.wait_for_document_ready(
+        utils.wait_for_document_ready(self.browser)
         number_of_rows = self.count_table_rows()
         #we wait for the button in the lat row 
         #Ex: formMain:dataTable:53:toggle
         last_row_id = "formMain:dataTable:%s:toggle" %(str(number_of_rows - 1))
-        self.make_webdriver_wait(By.ID, last_row_id)
+        utils.make_webdriver_wait(By.ID, last_row_id, self.browser)
         return self.browser.page_source 
     
     def download_attachment(self, origin, button_id, filename):
@@ -561,7 +563,7 @@ class SilpyNavigator(object):
         #count rows and wait for the last one
         number_of_rows = self.parser.number_of_rows_found(self.browser.page_source)
         last_row_id = 'formMain:dataTable:%s:acapite' %(number_of_rows - 1)    
-        self.make_webdriver_wait(By.ID,last_row_id)
+        utils.make_webdriver_wait(By.ID,last_row_id, self.browser)
         return self.browser.page_source
             
 
@@ -587,7 +589,6 @@ class SilpyScrapper(object):
         print 'ready to extract data'
         data = self.navigator.get_parlamentary_list(origin)
         rows = self.parser.parse_parlamentary_data(data)
-        print rows
         for row in rows:
             member_id = row['id']
             print 'procesando datos de: %s con id %s ' %(row['name'], member_id)
@@ -622,7 +623,9 @@ class SilpyScrapper(object):
            self.navigator.browser.execute_script(s['anexos_js_call'])
            #wait for the popup to load
            #formMain:dataTableDetalle:0:j_idt113 the id of the first button
-           self.navigator.make_webdriver_wait(By.ID, "formMain:dataTableDetalle:0:j_idt113")
+           utils.make_webdriver_wait(By.ID, 
+                                     "formMain:dataTableDetalle:0:j_idt113", 
+                                     self.navigator.browser)
            #pass the resulting html to attachment extractor
            attachments = self.parser.extract_session_attachment(self.navigator.browser.page_source)
            #download attachments:

@@ -161,19 +161,21 @@ class SenadoresScrapper(object):
         except TimeoutException:
             print "Loading took too much time!"
 
-    def obtener_lista_de_senadores(self):
-        url = base_url +  "index.php/senado/nomina/nomina-alfabetica"
-        self.browser.get(url)        
-        data = self.browser.page_source
-        senadores = self.parser.parse_senator_list(data)
-        #self.mongo.update_senadores(senadores)
-        return senadores
-
     def _wait_document_ready(self, something):
         print something
         is_complete = self.browser.execute_script("return document.readyState;")
         if (is_complete == "complete"):
             return True
+
+    def obtener_lista_de_senadores(self):
+        url = base_url +  "index.php/senado/nomina/nomina-alfabetica"
+        self.browser.get(url)        
+        #wait here for something
+        utils.wait_for_document_ready(self.browser)
+        data = self.browser.page_source
+        senadores = self.parser.parse_senator_list(data)
+        #self.mongo.update_senadores(senadores)
+        return senadores
             
     def extract_senators_data(self):
         senadores = self.obtener_lista_de_senadores()
@@ -194,8 +196,8 @@ class SenadoresScrapper(object):
         print 'obteniendo info de senador ' + senator['name'] 
         url="http://www.senado.gov.py/index.php/lista-de-curriculum/68-curriculum?id_parla=%s" %(id)
         self.browser.get(url)
-        self.make_webdriver_wait(By.CLASS_NAME, "IN-widget")
-        self.make_webdriver_wait(By.ID, "2-1-curriculum-vitae")
+        utils.make_webdriver_wait(By.CLASS_NAME, "IN-widget", self.browser)
+        utils.make_webdriver_wait(By.ID, "2-1-curriculum-vitae", self.browser)
         data = self.browser.page_source
         #extracts comisiones
         committees = self.parser.parse_senator_committees(data)

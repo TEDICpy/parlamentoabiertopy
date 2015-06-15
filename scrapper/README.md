@@ -21,6 +21,7 @@ pip install selenium
 pip install requests
 pip install slumber 
 pip install PopIt-Python
+pip install click
 
 2.1 Install PhantomJS
 Follow the instructions from:

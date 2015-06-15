@@ -1,6 +1,6 @@
 from pymongo import MongoClient
 
-client = MongoClient('192.168.122.1', 27017)
+client = MongoClient('localhost', 27017)
 
 class SilpyMongoClient(object):
 
@@ -29,7 +29,6 @@ class SilpyMongoClient(object):
     def update_senador(self, senador):
         #self.db.senadores.find_one({'id': senador['id'])})
         db_senadores = self.db.senadores
-        print senador
         result = db_senadores.update({'id':senador['id']}, {'$set':senador}, True)
         return result
 

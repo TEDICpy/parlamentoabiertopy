@@ -2,6 +2,11 @@
 import os
 from subprocess import call
 from selenium import webdriver
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import Select
+from selenium.webdriver.common.by import By
 
 attachments_command = ["curl", "http://sil2py.senado.gov.py/formulario/ListarSesion.pmf", 
 '-H', '"Host: sil2py.senado.gov.py"',
@@ -19,10 +24,26 @@ def get_new_browser():
      browser.set_window_size(1120, 550)
      return browser
 
-def _wait_document_ready(browser):
+def _wait_document_ready_callback(browser):
     is_complete = browser.execute_script("return document.readyState;")
     if (is_complete == "complete"):
         return True
+
+def wait_for_document_ready(browser):
+     try:
+          wait = WebDriverWait(browser, 15)
+          wait.until(_wait_document_ready_callback, browser)
+     except TimeoutException:
+          print "Loading took too much time!"
+
+def make_webdriver_wait(by, waited_element, browser):
+     try:
+          wait = WebDriverWait(browser, 15)
+          wait.until(EC.presence_of_element_located((by, waited_element)))
+          print "Page is ready! Loaded: " + waited_element
+        
+     except TimeoutException:
+          print "Loading took too much time! for element: " + waited_element
 
 def read_file_as_string(file):
     f = ''

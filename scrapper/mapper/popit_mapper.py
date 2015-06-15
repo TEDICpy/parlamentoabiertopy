@@ -37,8 +37,7 @@ url_string = 'http://' + hostname + ':' + str(port) + '/api/' + api_version
 api = slumber.API(url_string, auth=auth_key)
 
 
-def create_membership(data):
-
+def create_membership(data):     
     organization_id = data['organization_id'] 
     person_id = data['person_id']
     membership_id = organization_id + person_id
@@ -49,13 +48,13 @@ def create_membership(data):
         mem = api.memberships.post(data)
     else:
         print "ya existe membresia"
-
+    
 def create_committees(data):
     comision_id = None
     post_id = None
-    print data
+    data['name'] = data['text']
     if 'name' in data:
-        print 'creating committee ' + name 
+        print 'creating committee ' + data['name'] 
         name = data['name']
         #committee id generated for further references
         com_id = hashlib.sha1(name.encode('latin-1')).hexdigest()
@@ -65,7 +64,7 @@ def create_committees(data):
         if 'result' in com and 'id' in com['result'] and com['result']['id'] == com_id:
             result = com['result']
             comision_id = result['id']
-        else:    
+        else:
             committee = {'name': name, 'id': com_id, 'classification': 'Comision'}
             if 'link' in data: 
                 committee['links'] = [{'url': data['link'], 'note': 'enlace'}]
@@ -95,30 +94,75 @@ def create_committees(data):
                 data['post_id'] = post_id 
             mem = create_membership(data)
    
-def create_party(data):
+def create_party(member_id, party_name):
     party_id = None
-    p_id = hashlib.sha1(data['name'].encode('latin-1')).hexdigest()
-    r = requests.get(url_string + '/organizations/' + p_id)
+    data = {}
+    #sometimes there are dots, sometimes there are not
+    party_name = party_name.replace('.', '').strip()
+    #generate unique id based on the party's short name
+    p_id = hashlib.sha1(party_name.encode('latin-1')).hexdigest()
+    print p_id, party_name
+    r = requests.get(url_string + '/organizations/' + p_id)    
     if r.status_code == 404:
-        data['classificatio'] = 'party'
+        print 'Creating party %s' %(party_name)
+        data['id'] = p_id
+        data['classification'] = 'Party'
+        data['name'] = party_name
         result = api.organizations.post(data)
         if 'result' in result and 'id' in result['result']:
             party_id = result['result']['id']
+            print party_id
     else:
         party_id = p_id
+    data['organization_id'] = party_id
+    data['person_id'] = member_id
+    create_membership(data)
 
-def senador_post(data):
-    new_sen = {}
+def create_chambers(member_id, origin):
+    #creates a chamber if does not exists and liks to a member
+    #origin: senadores, diputados
+    data = {}
+    origin_name = None
+    chamber_id = None
+    if origin == 'S':
+        origin_name = 'Senado'
+    elif origin == 'D':
+        origin_name = 'Diputados'
+
+    c_id = hashlib.sha1(origin_name.encode('latin-1')).hexdigest()
+    r = requests.get(url_string + '/organizations/' + c_id)
+    if r.status_code == 404:
+        print 'Creating  %s' %(origin_name)
+        chamber = {}
+        chamber['id'] = c_id
+        chamber['name'] = origin_name
+        chamber['classification'] = 'Chamber'
+        result = api.organizations.post(chamber)
+        if 'result' in result and 'id' in result['result']:
+            chamber_id = result['result']['id']
+    else:
+        chamber_id = c_id
+    data['organization_id'] = chamber_id
+    data['person_id'] = member_id
+    create_membership(data)
+    
+def member_post(data, origin):
+    #create party if it does not exists 
+    new_member = {}
     contact_details = []
     memberships = []
     if 'name'in data:
         #generated hash for unique identification
-        sen_id = hashlib.sha1(data['name'].encode('latin-1')).hexdigest()
-        r = requests.get(url_string + '/persons/' +sen_id)
+        member_id = hashlib.sha1(data['name'].encode('latin-1')).hexdigest()
+        r = requests.get(url_string + '/persons/' +member_id)
         if r.status_code == 404:
-            print 'Procesando datos, Senador: ' + data['name']
-            new_sen['id'] = sen_id        
-            new_sen['name'] = data['name']
+            print 'Procesando datos: ' + data['name']
+            new_member['id'] = member_id        
+            new_member['name'] = data['name']
+            new_member['img'] = data['img']
+            if 'cv' in data:
+                new_member['summary'] = data['cv']
+                new_member['biography'] = data['cv']
             if 'email' in data:
                 contact_details.append({
                     'type':'email',
@@ -133,30 +177,32 @@ def senador_post(data):
                     'value': data['phone'],
                     'note': ''
                     })
-            new_sen['contact_details'] = contact_details 
-            result =  api.persons.post(new_sen)
+            new_member['contact_details'] = contact_details 
+            result =  api.persons.post(new_member)
             if 'result' in result and 'id' in result['result']:
                 person_id = result['result']['id']
+                #if the member is part of the senate or the chamber of deputies
+                create_chambers(person_id, origin)
+                #the party the member belongs
+                create_party(person_id, data['party'])
+                #commitee creation and association
                 if 'committees' in data:
                     for c in  data['committees']:
                         c['person_id'] = person_id
-                        com = committees_post(c)
-        else: 
-            print 'Ya existe Senador: ' + data['name'] 
+                        com = create_committees(c)
+        else:
+            print 'Ya existe el Miembro: ' + data['name'] 
             
-
-def delete_all_members():
-    #gets all members and proceed to eliminate it from popit
-    persons = api.persons.get()
-    for person in persons:
-        pass
-    
+diputados = mdb.diputados.find()
+for d in diputados:
+    diputado = member_post(d, 'D')
 
 senadores = mdb.senadores.find()
 for sen in senadores:
-    senador = senador_post(sen)
+    senador = member_post(sen, 'S')
 
-print api.organizations.get()
+
+#print api.organizations.get()
 
 if __name__ == '__main__':
     pass

@@ -8,11 +8,11 @@ port = 3000
 api_version = 'v0.1' 
 # Al parecer los proximos 2 parametros no se usan
 user = "demian@tedic.org"
-password = "popitdevel" 
+password = "popitdevel"
 #-----
 
 # Esto se genera en el sitio de popit
-api_key = '0a4a2080b87ce57cc0e37a44c0da0921f3e4073d' 
+api_key = '460ec835af8ec3486656731937f33b8df54a8d2c' 
 #------
-mongo_host = '192.168.122.1'
+mongo_host = 'localhost'
 mongo_port = 27017
