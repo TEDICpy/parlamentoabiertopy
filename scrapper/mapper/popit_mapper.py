@@ -2,7 +2,6 @@
 Mapper para instancia PopIt 
 Proyecto parlamentoabierto.org.py
 
-
 """
 
 __author__ = "Ivan Florentin<ivan@sinergetica.com>"
@@ -193,16 +192,17 @@ def member_post(data, origin):
         else:
             print 'Ya existe el Miembro: ' + data['name'] 
             
-diputados = mdb.diputados.find()
-for d in diputados:
-    diputado = member_post(d, 'D')
-
-senadores = mdb.senadores.find()
-for sen in senadores:
-    senador = member_post(sen, 'S')
 
 
-#print api.organizations.get()
+def map_popit():
+    diputados = mdb.diputados.find()
+    for d in diputados:
+        diputado = member_post(d, 'D')
+
+    senadores = mdb.senadores.find()
+    for sen in senadores:
+        senador = member_post(sen, 'S')
+
 
 if __name__ == '__main__':
     pass

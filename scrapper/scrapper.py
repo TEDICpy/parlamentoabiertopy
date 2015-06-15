@@ -4,6 +4,7 @@ from scrapper.silpy_scrapper import SilpyScrapper
 from scrapper.senadores_scrapper import SenadoresScrapper
 from scrapper.diputados_scrapper import DiputadosScrapper
 
+from mapper.popit_mapper import map_popit
 
 @click.group()
 def cli():
@@ -48,10 +49,15 @@ def diputados():
     diputados_scrapper = DiputadosScrapper()
     diputados_scrapper.get_members_data()
 
+@click.command(help="Exporta los datos a popit")
+def map_popit_data():
+    print 'Exportando a popit'
+    map_popit()
+
 cli.add_command(all)
 cli.add_command(senadores)
 cli.add_command(diputados)
-
+cli.add_command(map_popit_data)
 
 if __name__ == "__main__":
     cli()
