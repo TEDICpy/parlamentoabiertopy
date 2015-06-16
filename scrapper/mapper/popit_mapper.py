@@ -15,7 +15,7 @@ import requests
 import json
 import hashlib
 from popit_config import api_key, instance, hostname, port, user, password, api_key 
-from popit_config import api_version
+from popit_config import api_version, images_dir
 from popit_config import mongo_host, mongo_port
 
 
@@ -127,7 +127,6 @@ def create_chambers(member_id, origin):
         origin_name = 'Senado'
     elif origin == 'D':
         origin_name = 'Diputados'
-
     c_id = hashlib.sha1(origin_name.encode('latin-1')).hexdigest()
     r = requests.get(url_string + '/organizations/' + c_id)
     if r.status_code == 404:
@@ -150,9 +149,10 @@ def member_post(data, origin):
     new_member = {}
     contact_details = []
     memberships = []
-    if 'name'in data:
+    if 'name'in data and 'id' in data:
         #generated hash for unique identification
-        member_id = hashlib.sha1(data['name'].encode('latin-1')).hexdigest()
+        #hashlib.sha1(data['name'].encode('latin-1')).hexdigest()
+        member_id = data['id']#better use the id from silpy
         r = requests.get(url_string + '/persons/' +member_id)
         if r.status_code == 404:
             print 'Procesando datos: ' + data['name']
@@ -184,6 +184,7 @@ def member_post(data, origin):
                 create_chambers(person_id, origin)
                 #the party the member belongs
                 create_party(person_id, data['party'])
+                upload_member_image(person_id, data)
                 #commitee creation and association
                 if 'committees' in data:
                     for c in  data['committees']:
@@ -192,7 +193,18 @@ def member_post(data, origin):
         else:
             print 'Ya existe el Miembro: ' + data['name'] 
             
-
+        
+def upload_member_image(member_id, data):
+    #member_id: the person id in popit
+    #data: a dict that must contain
+    #    id: the id in silpy, which is also the filename of the image
+    #    img: the source of the img
+    filename= data['id'] + '.jpg'
+    fp = open(images_dir + filename)
+    result = api.persons(id=member_id)\
+                .image.post({'source': data['img'],
+                            'notes':'Official Portrait'},
+                            files={'image': fp})
 
 def map_popit():
     diputados = mdb.diputados.find()
@@ -206,5 +218,4 @@ def map_popit():
 
 if __name__ == '__main__':
     pass
-
 
