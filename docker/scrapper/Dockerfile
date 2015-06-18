@@ -24,4 +24,4 @@ RUN git clone https://github.com/demianfe/parlamentoabiertopy
 
 ENV LANG es_PY.UTF-8
 ENV LANGUAGE es_PY.UTF-8:es
-RUN locale-gen 
+RUN locale-gen es_PY.UTF-8
