@@ -1,7 +1,6 @@
 FROM ubuntu:14.04
 MAINTAINER Demian Florentin <demian@sinergetica.com>
 
-ENV LANG es_PY.UTF-8
 RUN apt-get update
 RUN apt-get upgrade -y
 RUN apt-get install -y python-software-properties 
@@ -22,3 +21,7 @@ RUN pip install click
 RUN wget https://gist.githubusercontent.com/julionc/7476620/raw/b27b7e3b51b92be055ee46aefc0acfa459c0bb27/install_phantomjs.sh
 RUN sh install_phantomjs.sh
 RUN git clone https://github.com/demianfe/parlamentoabiertopy
+
+ENV LANG es_PY.UTF-8
+ENV LANGUAGE es_PY.UTF-8:es
+RUN locale-gen 
