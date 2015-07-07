@@ -14,7 +14,7 @@ password = "popitdevel"
 #-----
 
 # Esto se genera en el sitio de popit
-api_key = '460ec835af8ec3486656731937f33b8df54a8d2c' 
+api_key = '' 
 #------
 mongo_host = 'localhost'
 mongo_port = 27017

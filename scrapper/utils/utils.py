@@ -8,6 +8,9 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.by import By
 
+
+BROWSER_WAIT=60
+
 attachments_command = ["curl", "http://sil2py.senado.gov.py/formulario/ListarSesion.pmf", 
 '-H', '"Host: sil2py.senado.gov.py"',
 '-H', ' "User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:33.0) Gecko/20100101 Firefox/33.0"',
@@ -31,14 +34,14 @@ def _wait_document_ready_callback(browser):
 
 def wait_for_document_ready(browser):
      try:
-          wait = WebDriverWait(browser, 15)
+          wait = WebDriverWait(browser, BROWSER_WAIT)
           wait.until(_wait_document_ready_callback, browser)
      except TimeoutException:
           print "Loading took too much time!"
 
 def make_webdriver_wait(by, waited_element, browser):
      try:
-          wait = WebDriverWait(browser, 15)
+          wait = WebDriverWait(browser, BROWSER_WAIT)
           wait.until(EC.presence_of_element_located((by, waited_element)))
           print "Page is ready! Loaded: " + waited_element
         

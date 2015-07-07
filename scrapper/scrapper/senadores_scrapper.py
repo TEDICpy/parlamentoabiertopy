@@ -152,20 +152,20 @@ class SenadoresScrapper(object):
     def driver_quit(self):
         self.browser.quit()
 
-    def make_webdriver_wait(self, by, waited_element):
-        try:
-            wait = WebDriverWait(self.browser, 15)
-            wait.until(EC.presence_of_element_located((by, waited_element)))
-            print "Page is ready! Loaded: " + waited_element
+    # def make_webdriver_wait(self, by, waited_element):
+    #     try:
+    #         wait = WebDriverWait(self.browser, 15)
+    #         wait.until(EC.presence_of_element_located((by, waited_element)))
+    #         print "Page is ready! Loaded: " + waited_element
         
-        except TimeoutException:
-            print "Loading took too much time!"
+    #     except TimeoutException:
+    #         print "Loading took too much time!"
 
-    def _wait_document_ready(self, something):
-        print something
-        is_complete = self.browser.execute_script("return document.readyState;")
-        if (is_complete == "complete"):
-            return True
+    # def _wait_document_ready(self, something):
+    #     print something
+    #     is_complete = self.browser.execute_script("return document.readyState;")
+    #     if (is_complete == "complete"):
+    #         return True
 
     def obtener_lista_de_senadores(self):
         url = base_url +  "index.php/senado/nomina/nomina-alfabetica"
