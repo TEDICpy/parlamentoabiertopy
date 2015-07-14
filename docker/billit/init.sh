@@ -1,3 +1,5 @@
 #
-##Nothing yet 
+## 
+
+cd $billit && rails s
 
