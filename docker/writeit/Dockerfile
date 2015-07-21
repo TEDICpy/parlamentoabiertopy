@@ -3,15 +3,18 @@ MAINTAINER  Ivan Florentin <ivan@sinergetica.com>
 EXPOSE 8000
 LABEL "version"="1.0"
 ENV data /data
-#ENTRYPOINT 
+#ENTRYPOINT
+
+ENV LANG es_PY.UTF-8
+ENV LANGUAGE es_PY.UTF-8:es
 
 RUN touch /etc/writeit
 RUN apt-get update
 RUN apt-get upgrade -y
 RUN apt-get install -y wget git sqlite3
-RUN apt-get install -y python-pip python-dev libpython-dev libffi-dev libssl-dev g++  yui-compressor python-urllib3 
+RUN apt-get install -y python-pip python-dev libpython-dev libffi-dev libssl-dev g++  yui-compressor python-urllib3
 RUN wget -t0 -c https://download.elastic.co/elasticsearch/elasticsearch/elasticsearch-1.5.1.deb
-RUN dpkg -i elasticsearch-1.5.1.deb 
+RUN dpkg -i elasticsearch-1.5.1.deb
 RUN update-rc.d elasticsearch defaults 95 10
 RUN /etc/init.d/elasticsearch start
 
@@ -20,17 +23,19 @@ ENV src /src
 ENV writeit /src/write-it
 RUN cd $src && git clone https://github.com/ciudadanointeligente/write-it.git
 
+RUN locale-gen es_PY.UTF-8
+
 ADD settings.py $writeit/writeit/
 ADD init.sh /
 ADD db_init.sh /
 
-RUN cd $writeit  && pip install -r requirements.txt 
+RUN cd $writeit  && pip install -r requirements.txt
 
 VOLUME ["/src"]
 RUN mkdir /data
 VOLUME ["/data"]
 
-RUN sqlite3 /data/writeit.db 
+RUN sqlite3 /data/writeit.db
 
 
 #  levantar la imagen con
@@ -49,12 +54,12 @@ RUN sqlite3 /data/writeit.db
 #CMD cd /write-it && python manage.py runserver 0.0.0.0:8000
 
 
-#RUN cd /write-it && ./manage.py syncdb 
+#RUN cd /write-it && ./manage.py syncdb
 #RUN cd /write-it && ./manage.py migrate
-#RUN cd /write-it && ./manage.py syncdb 
+#RUN cd /write-it && ./manage.py syncdb
 #RUN cd /write-it && ./manage.py migrate
 #RUN cd /writeit/config_examples/
-#RUN ./manage.py 
+#RUN ./manage.py
 #RUN mkvirtualenv writeit
 #RUN . ../venv/bin/activate
 #RUN vim writeit.settings
@@ -74,6 +79,6 @@ RUN sqlite3 /data/writeit.db
 #RUN mv writeit.db writeit.db.old
 #RUN ./manage.py syncdb && ./manage.py migrate
 #RUN python manage.py runserver 192.168.122.77:8000
-#RUN sqlite3 writeit.db 
+#RUN sqlite3 writeit.db
 #RUN python manage.py runserver 192.168.122.77:8000
 #ADD init.sh /write-it
