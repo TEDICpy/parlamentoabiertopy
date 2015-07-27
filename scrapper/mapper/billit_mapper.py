@@ -10,6 +10,14 @@ from datetime import datetime
 host = 'http://localhost:3500'
 secret_token = '75cc973db60d3e07beaa1630c4cb37ded228e5bb71853be068a573b1a2ee385379111f9b12847b285a7e2c2b2f918b2902f4edb04046319cf41148a642fa53d3'
 
+mg_client = pymongo.MongoClient(host=mongo_host, port=mongo_port)
+mdb = mg_client.silpy01
+senadores = mdb.senadores
+
+headers = {"Content-Type": "application/json",
+           "X-CSRF-Token": secret_token}
+
+
 class Bill(object):
     ''' 
     class bassed on the model from 
@@ -35,8 +43,6 @@ class Bill(object):
     current_priority= "" #, type: String
 
 
-headers = {"Content-Type": "application/json",
-           "X-CSRF-Token": secret_token}
 
 b = Bill()
 b.uid = str(uuid.uuid1())
@@ -59,7 +65,11 @@ subject_areas= "" #, type: Array
 # current_priority= "" #, type: String
 
 print "loading bill with uuid= %s" %(b.uid) 
-payload =  json.dumps(b.__dict__)    
-r = requests.post(host + '/bills', data=payload)
-
-print r.content
+senadores = mdb.senadores.find()
+for sen in senadores:
+    sen['uid'] = str(uuid.uuid1())
+    
+    r = requests.post(host + '/bills', data=payload)
+    print r.content
+    
+#json.dumps(b.__dict__)    
