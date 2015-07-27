@@ -321,9 +321,10 @@ class SilpyHTMLParser(object):
         docs_tbody = soup.find(id='formMain:j_idt124:dataTableDetalle_data')
         if docs_tbody == None:
             return None
-        
         documents = []
         for tr in docs_tbody.find_all('tr', recursive=False):
+            if tr.text.strip() == 'Sin registros...':
+                break
             td_list = tr.find_all('td',recursive=False)
             doc = {}
             doc['type'] = td_list[0].text.strip()
@@ -352,7 +353,8 @@ class SilpyHTMLParser(object):
             directive['result'] = res_date[0]
             directive['date'] = res_date[1]
             #will be pressed somewhere
-            directive['button_id'] = td_list[1].button['id']
+            if td_list[1].button:
+                directive['button_id'] = td_list[1].button['id']
             directives.append(directive)            
         return directives
         
@@ -649,13 +651,14 @@ class SilpyNavigator(object):
         #GET http://silpy.congreso.gov.py/formulario/VerDetalleTramitacion.pmf?q=VerDetalleTramitacion%2F + project_id
         _url = "http://silpy.congreso.gov.py/formulario/VerDetalleTramitacion.pmf"+ \
                "?q=VerDetalleTramitacion%2F" + project_id
-        
         self.browser.get(_url)
-        details = self.parser.extract_project_details(self.browser.page_source)
-        # r = requests.get(_url)
-        # details = self.parser.extract_project_details(r.content)
-        #download all the files related to this project
-        return details
+        #wait
+        #TODO: extract result count
+        #wait to find that index
+        time.sleep(2)        
+        bill = self.parser.extract_project_details(self.browser.page_source)
+        #TODO: download all the files related to this project
+        return bill
         
     def get_projects_by_committee(self):
         #TODO
@@ -700,7 +703,7 @@ class SilpyScrapper(object):
     def get_members_data(self, origin):
         print 'ready to extract data'
         data = self.navigator.get_parlamentary_list(origin)
-        rows = self.parser.parse_parlamentary_data(data)
+        rows = self.parser.parse_parlamentary_data(data)#member list
 
         index = 0
         while (index < len(rows)):
@@ -708,32 +711,46 @@ class SilpyScrapper(object):
             member_id = row['id']
             print 'procesando datos de: %s con id %s ' %(row['name'], member_id)
             html = self.navigator.get_member_projects(member_id)
-            #TODO: represent the relation between a member and its projects
-            #as mongodb relation
-            projects = self.parser.parse_projects_by_parlamentary(html)
-            
-            row['projects'] = []
-            index = 0
-            while(index < len(projects)):
-                project = projects[index]
-                row['projects'].append(self.navigator.get_project_details(project['id']))
-                
-            #row['projects'] = projects         
+            row['projects'] = self.parser.parse_projects_by_parlamentary(html)
             #download img
-            filename = 'download/img/'+ row['id']+ '.jpg'
+            filename = 'download/img/'+ row['id'] + '.jpg'
             urllib.urlretrieve(row['img'], filename)
-            rows[index] = row
             index += 1
-            print 'WARNING - Remove break!'
-            break
-                
+        #TODO:
+        #save members collection here and then proceed to extract bills information
+        #from what is saved in the data base
         if origin == 'S':
             print "Guardando datos de Senadores"
             self.mongo_client.update_senadores(rows)
-            
         elif origin == 'D':
             print "Guardando datos de Diputados"
             self.mongo_client.update_diputados(rows)
+        self.update_members_bills_from_db(origin)
+        
+    def update_members_bills_from_db(self, origin):
+        #looks form members on the db and downloads their bills
+        if origin == 'S':
+            members  = self.mongo_client.get_all_senators()
+        elif origin == 'D':
+            members  = self.mongo_client.get_all_deputies()
+        
+        for m in members: 
+            print "Extrayendo proyectos de %s " %(m['name'])
+            projects = m['projects']                 
+            index = 0
+            while(index < len(projects)):
+                project = projects[index]
+                print "id de proyecto " + project['id']
+                project.update(self.navigator.get_project_details(project['id']))
+                m['projects'][index] = project
+                index +=1
+            if origin == 'S':
+                print "Guardando datos de Senadores"
+                self.mongo_client.update_senador(m)
+            elif origin == 'D':
+                print "Guardando datos de Diputados"
+                self.mongo_client.update_diputados(m)
+            
             
     def get_commiittees_by_period(self):
          periodo = '2014-2015'
