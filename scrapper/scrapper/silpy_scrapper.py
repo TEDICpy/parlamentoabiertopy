@@ -99,7 +99,7 @@ class SilpyHTMLParser(object):
         #TODO: count sections?
         projects = []
         #ids are generated dynamically
-        #so wi search for the div with attr=role and value=tablist
+        #so we search for the div with attr=role and value=tablist
         #and extract its id
         content_id = soup.find(id='formMain').find_all('div', {'role': 'tablist'})[0]['id']
         tabs_div = soup.find(id=content_id)
@@ -108,7 +108,7 @@ class SilpyHTMLParser(object):
         for i in range(0,len(h3_list)):
             id=content_id + ":%i:dataTable_data" %(i)
             tbody=soup.find(id=id)
-            projects.append(self.parsear_lista_de_proyectos(tbody))
+            projects += self.parsear_lista_de_proyectos(tbody)
         return projects
 
     #quiza ni necesitamos ya que podemos quitar las estadisticas localmente
@@ -145,7 +145,7 @@ class SilpyHTMLParser(object):
         return self.parsear_lista_de_proyectos(result_tbody)
 
     def parsear_lista_de_proyectos(self, result_tbody, id=None):
-        #result_body is the tbody which contains the tebls's rows
+        #result_body is the tbody which contains the rows from the table
         #Ex.: result_tbody = soup.find(id = "formMain:dataTableProyecto_data") 
         #if the id is not None then we extract the result_tbody with that id        
         if id is not None:
@@ -273,55 +273,157 @@ class SilpyHTMLParser(object):
             comisiones.append(comision)
         return comisiones
 
-    def extraccion_de_informacion_de_proyecto(self, html):
+    def extract_project_details(self, html):
+        bill = {}
         soup = BeautifulSoup(html)
-        info_div = soup.find(id='formMain:j_idt81_content')
-        
+        #j_idt80:j_idt81_content
+        #formMain:j_idt81_content
+        info_div = soup.find(id='j_idt80:j_idt81_content')
+
         #informacion del proyecto
         info = {}
-        info['file'] = info_div.find(id='formMain:expedienteCamara').text.strip()
-        info['type'] = info_div.find(id='formMain:idTipoProyecto').text.strip()
-        info['subject'] = info_div.find(id='formMain:idMateria').text.strip()
-        info['importance'] = info_div.find(id='formMain:idUrgencia').text.strip()
-        info['entry_date'] = info_div.find(id='formMain:fechaIngreso').text.strip()
-        info['iniciativa'] = info_div.find(id='formMain:idTipoIniciativa').text.strip()
-        info['origin'] = info_div.find(id='formMain:idOrigen').text.strip()
-        info['message'] =info_div.find(id='formMain:numeroMensaje').text.strip()
-        info['heading'] =info_div.find(id='formMain:acapite').text.strip()
+        info['file'] = info_div.find(id='j_idt80:expedienteCamara').text.strip()
+        info['type'] = info_div.find(id='j_idt80:idTipoProyecto').text.strip()
+        info['subject'] = info_div.find(id='j_idt80:idMateria').text.strip()
+        info['importance'] = info_div.find(id='j_idt80:idUrgencia').text.strip()
+        info['entry_date'] = info_div.find(id='j_idt80:fechaIngreso').text.strip()
+        info['iniciativa'] = info_div.find(id='j_idt80:idTipoIniciativa').text.strip()
+        info['origin'] = info_div.find(id='j_idt80:idOrigen').text.strip()
+        info['message'] =info_div.find(id='j_idt80:numeroMensaje').text.strip()
+        info['heading'] =info_div.find(id='j_idt80:acapite').text.strip()
 
-        #'Etapa de la Tramitación'
+        bill['info'] = info
+        #Etapa de la Tramitación
         etapa = {}
-        etapas_table = soup.find(id='formMain:panelEtapas')
-        etapa['stage'] = etapas_table.find(id='formMain:idEtapaProy').text.strip()
-        etapa['sub_stage'] = etapas_table.find(id='formMain:idSubEtapaProy').text.strip()
-        etapa['status'] = etapas_table.find(id='formMain:idEstadoProyecto').text.strip()
+        main_table = soup.find(id='j_idt80:j_idt81_content')
+        etapas_table = main_table.table.table
+        status_statges_list = etapas_table.find_all('span', {'class': "itemResaltado3D-2"})
+        stage_substage = status_statges_list[1].text.split("/")
+        etapa['stage'] = stage_substage[::-1][1]#next last element
+        etapa['sub_stage'] = stage_substage[::-1][0]#last element 
+        etapa['status'] = status_statges_list[0].text.strip()
+        bill['stage'] = etapa
 
-        #detalle de tramitacion
-        tbody_content = soup.find(id='formMain:dataTableTramitacion_data')
-        tr_list = tbody_content.find_all('tr', recursive=False)
+        #parse lateral menu and extract sextion 
+        
+        #documentos de iniciativa            
+        bill['documents'] = self._extract_project_documents(soup)
+        #detalle de tramitacion        
+        bill['paperworks'] = self._extract_project_paperworks(soup)
+        #autores
+        bill['authors'] = self._extract_project_authors(soup)
+        #directives formMain:j_idt124:j_idt203
+        bill['directives'] = self._extract_project_directives(soup)
+        #resoluciones y mensajes -> reports?
+        return bill
 
-        tramitaciones = []
+    def _extract_project_documents(self, soup):
+        docs_tbody = soup.find(id='formMain:j_idt124:dataTableDetalle_data')
+        if docs_tbody == None:
+            return None
+        
+        documents = []
+        for tr in docs_tbody.find_all('tr', recursive=False):
+            td_list = tr.find_all('td',recursive=False)
+            doc = {}
+            doc['type'] = td_list[0].text.strip()
+            name = td_list[1].text.strip().split('\n')
+            doc['name'] = name[0].strip()
+            doc['file_size'] = name[1].strip().replace('[', '').replace(']', '')
+            doc['registration_date'] = td_list[2].text.strip()
+            #will be pressed somewhere
+            doc['button_id'] = tr.button['id']
+            documents.append(doc)
+        return documents
+        
+    def _extract_project_directives(self, soup):
+        main = soup.find(id='formMain:j_idt124:j_idt203')
+        if main == None:
+            return None
+        directives_tbody = main.find('tbody')
+
+        tr_list = directives_tbody.find_all('tr', recursive=False)
+        directives = []
         for tr in tr_list:
-            tramitacion = {}
-            td_list = tr.find_all('td')
-            tramitacion['index'] = td_list[0].text.strip()
-            tramitacion['session'] = td_list[1].text.strip()
-            tramitacion['date'] = td_list[2].text.strip()
+            directive = {}
+            td_list = tr.find_all('td', recursive=False)
+            text = td_list[1].find('li').text
+            res_date =  text[:text.find('\n')].split(' ')
+            directive['result'] = res_date[0]
+            directive['date'] = res_date[1]
+            #will be pressed somewhere
+            directive['button_id'] = td_list[1].button['id']
+            directives.append(directive)            
+        return directives
+        
+    def _extract_project_authors(self, soup):
+        autores_tbody = soup.find(id='formMain:j_idt124:j_idt190').find('tbody')
+        autores_tr_list = autores_tbody.find_all('tr')
+        autores = []
+        for tr in autores_tr_list:
+            reverse = tr.td.img['src'][::-1]
+            id = reverse[reverse.index('.')+1: reverse.index('/')][::-1]
+            autor = {'id': id, 'name': tr.text.strip()}
+            autores.append(autor)
+        return autores
+    
+    def _extract_project_paperworks(self, soup):
+        #recieves a soup object from method extract_project_details
+        paperworks = []
+        tbody_content = soup.find(id='formMain:j_idt124:dataTableTramitacion_data')
+        paperwork_tr_list = tbody_content.find_all('tr', recursive=False)
+        for tr in paperwork_tr_list:
+            paperwork = {}
+            td_list = tr.find_all('td', recursive=False)
+            paperwork['index'] = td_list[0].text.strip()
+            paperwork['session'] = td_list[1].text.strip()
+            paperwork['date'] = td_list[2].text.strip()
             #TODO: extraccion de etapa se puede generalizar
             if len(td_list) >= 1:
                 td1 = td_list[3]
                 td1_span_list = td1.find_all('span')
                 #print "td1_span_list " + str(td1_span_list)
                 if len(td1_span_list) > 1:
-                    tramitacion['stage'] = {'chamber': td1_span_list[0].text, 
+                    paperwork['stage'] = {'chamber': td1_span_list[0].text, 
                                             td1_span_list[1].text : td1_span_list[2].text} 
 
-            #Resultado
-            #TODO: todo esto es un kilombo, aqui hay de todo
-            tramitacion['result'] = td_list[4]
-            tramitaciones.append(tramitacion)
+            #resultado: the last column
+            results_li= td_list[4].find_all('li',recursive=False)
+            result_text = td_list[4].text#find(text=True, recursive=False)
+            result = {}
+            text = td_list[4].find(text=True)
+            #Next element(s), those could be one of the following
+            #1 - it might be a list (<ul><li></li></ul>)
+            #2 - might be an <a> in which case it is followed by a text
+            #3 - A text (the actual result), followed by <br>(two), and a text
+            # with the next step
+            ul = td_list[4].find_all('ul')
+            a = td_list[4].find_all('a')
+            br = td_list[4].find_all('br')
+            if a:
+                #in this case the result is on the hr
+                #preceeded by the word sentido
+                div_text = td_list[4].text
+                result['details'] = text.split(',')
+                div_text = div_text[len(text):]
+                result['value'] = div_text[len('Sentido'):].strip()
+            elif br:
+                #in this case the text is where the bills goes to afterwards
+                #and the title is the actual result
+                result['value'] = text
+                result['next_step'] = br[0].text.strip()
+            elif ul:
+                result['value'] = text
+                result['details'] = []
+                li_list = ul[0].find_all('li')
+                for li in li_list:
+                    result['details'].append(li.text.strip())
 
-        return tramitaciones
+            #todo clean up result before adding
+            paperwork['result'] = result
+            paperworks.append(paperwork)
+        
+        return paperworks
        
     def extraer_miembros_por_comision(self, html):
         soup = BeautifulSoup(html)
@@ -372,7 +474,7 @@ from selenium.webdriver.common.by import By
 
 class SilpyNavigator(object):
     """
-    Naviagation Flow for 
+    Naviagation Flow for http://silpy.congreso.gov.py
     """
 
     def __init__(self, browser=None):
@@ -421,7 +523,8 @@ class SilpyNavigator(object):
         #TODO: makte option selection with parameters
         #for origin and period
         self._call_menu_item(u'Parlamentarios por Período')#from side menu
-        utils.make_webdriver_wait(By.ID, "formPreference:j_id16", self.browser)
+        #formPreference:j_id16
+        utils.make_webdriver_wait(By.ID, "formMain:cmdBuscarParlamentario", self.browser)
 
         utils.make_webdriver_wait(By.ID, 
                                   "formMain:idPeriodoLegislativo_input",
@@ -443,7 +546,7 @@ class SilpyNavigator(object):
                                   self.browser)#".ui-datatable-header.ui-widget-header")
         number_of_rows = self.parser.number_of_rows_found(self.browser.page_source) #extraemos la cantidad de registros encontrados
         #esperamos por la aparicion del ultimo registro en base a su css
-        last_row_id = "formMain:dataTable:%s:j_idt92" %(str(number_of_rows - 1))
+        last_row_id = "formMain:dataTable:%s:j_idt90" %(str(number_of_rows - 1))
         utils.make_webdriver_wait(By.ID, last_row_id, self.browser)
         return self.browser.page_source 
 
@@ -541,12 +644,20 @@ class SilpyNavigator(object):
         #TODO async?
         utils.download_file(origin, session_id, viewstate, filename)
         
-    def obtener_detalle_de_proyecto(self, proyecto_id):
+    def get_project_details(self, project_id):
         #obtiene una comision e invoca a la url:
-        #GET http://silpy.congreso.gov.py/formulario/VerDetalleTramitacion.pmf?q=VerDetalleTramitacion%2F + comision_id
-        pass
-
-    def buscar_proyectos_por_comision(self):
+        #GET http://silpy.congreso.gov.py/formulario/VerDetalleTramitacion.pmf?q=VerDetalleTramitacion%2F + project_id
+        _url = "http://silpy.congreso.gov.py/formulario/VerDetalleTramitacion.pmf"+ \
+               "?q=VerDetalleTramitacion%2F" + project_id
+        
+        self.browser.get(_url)
+        details = self.parser.extract_project_details(self.browser.page_source)
+        # r = requests.get(_url)
+        # details = self.parser.extract_project_details(r.content)
+        #download all the files related to this project
+        return details
+        
+    def get_projects_by_committee(self):
         #TODO
         # 1 - seleccionar del menu principal Proyectos por Comisión
         # 2 - seleccionar camara (Diputados o Senadores)
@@ -559,6 +670,7 @@ class SilpyNavigator(object):
             
     def list_projects_by_committee(self, js_call):
         #TODO:invoke js_call from data dictionary
+        #should this  be called when browsing projects by period?
         self.browser.execute_script(js_call)
         #count rows and wait for the last one
         number_of_rows = self.parser.number_of_rows_found(self.browser.page_source)
@@ -589,19 +701,37 @@ class SilpyScrapper(object):
         print 'ready to extract data'
         data = self.navigator.get_parlamentary_list(origin)
         rows = self.parser.parse_parlamentary_data(data)
-        for row in rows:
+
+        index = 0
+        while (index < len(rows)):
+            row = rows[index]
             member_id = row['id']
             print 'procesando datos de: %s con id %s ' %(row['name'], member_id)
             html = self.navigator.get_member_projects(member_id)
-            args = {'id': row['id'],
-                    'projects': self.parser.parse_projects_by_parlamentary(html)}
+            #TODO: represent the relation between a member and its projects
+            #as mongodb relation
+            projects = self.parser.parse_projects_by_parlamentary(html)
+            
+            row['projects'] = []
+            index = 0
+            while(index < len(projects)):
+                project = projects[index]
+                row['projects'].append(self.navigator.get_project_details(project['id']))
+                
+            #row['projects'] = projects         
             #download img
             filename = 'download/img/'+ row['id']+ '.jpg'
             urllib.urlretrieve(row['img'], filename)
-        if origin=='S':
+            rows[index] = row
+            index += 1
+            print 'WARNING - Remove break!'
+            break
+                
+        if origin == 'S':
             print "Guardando datos de Senadores"
             self.mongo_client.update_senadores(rows)
-        elif origin=='D':
+            
+        elif origin == 'D':
             print "Guardando datos de Diputados"
             self.mongo_client.update_diputados(rows)
             
