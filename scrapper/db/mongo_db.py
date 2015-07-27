@@ -13,6 +13,19 @@ class SilpyMongoClient(object):
         results = db_projects.insert_many(projects)# insert projects
         return results
 
+    def upsert_projects(self, projects):
+        #saves a list of projects and returns the list of
+        #object ids
+        results = []
+        db_projects = self.db.projects #initialize collection
+        for project in projects:
+            id = project['id']
+            print 'upserting project %s' %(id)
+            result = db_projects.update({'id':id}, {'$set':project}, True)
+            results.append(id)
+            print result
+        return results
+    
     def save_senadores(self, senadores):
         db_senadores = self.db.senadores #initialize collection
         results = db_senadores.insert_many(senadores)# insert senadores, upsert maybe?
@@ -21,7 +34,11 @@ class SilpyMongoClient(object):
     def update_senadores(self, senadores):
         db_senadores = self.db.senadores
         results = []
+        project_ids = []
         for senador in senadores:
+            if 'projects' in senador:
+                project_ids = self.upsert_projects(senador['projects'])
+            senador['projects'] = project_ids
             result = db_senadores.update({'id':senador['id']}, {'$set':senador}, True)
             results.append(result)
         return results
@@ -90,3 +107,8 @@ class SilpyMongoClient(object):
         db_articles = self.db.articles
         result = db_articles.insert_many(articles)
         return result
+
+    def get_senador(self):
+        db_senadores = self.db.senadores
+        return db_senadores.find_one()
+        

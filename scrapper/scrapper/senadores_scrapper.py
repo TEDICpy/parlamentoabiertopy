@@ -204,9 +204,8 @@ class SenadoresScrapper(object):
         #extracts dictamenes
         dictamenes = self.parser.parse_dictamenes(data)
         cv = self.parser.parse_senator_info(data)
-        proyectos = self.parser.parse_senator_presented_projects(data)
-        senator.update({'projects': proyectos,
-                        'committees': committees,
+#        proyectos = self.parser.parse_senator_presented_projects(data)
+        senator.update({'committees': committees,
                         'rulings': dictamenes,
                         'cv': cv})
         return senator
