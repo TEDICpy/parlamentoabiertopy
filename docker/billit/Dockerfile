@@ -9,21 +9,21 @@ RUN apt-get update
 RUN apt-get -y upgrade
 
 #install ruby 2.1
-RUN sudo apt-get install software-properties-common
+RUN sudo apt-get install -y software-properties-common
 RUN sudo apt-add-repository ppa:brightbox/ruby-ng
 RUN sudo apt-get update
 
 #RUN apt-get install -y  ruby1.9.1 ruby1.9.1-dev make git ruby2.0 ruby2.0-dev  mongodb g++
 RUN apt-get install -y  ruby1.9.1 ruby1.9.1-dev make git ruby2.1 ruby2.1-dev  mongodb g++
 
-RUN sudo apt-get install ruby-switch
+RUN sudo apt-get  install -y  ruby-switch
 RUN ruby-switch --set ruby2.1
  
 RUN gem install nio4r -v '1.0.0'
 RUN gem install bcrypt -v '3.1.7'
 RUN gem install bundler
 
-RUN apt-get install openjdk-7-jdk
+RUN apt-get install -y openjdk-7-jdk
 
 RUN mkdir $src
 RUN cd $src && git clone https://github.com/ciudadanointeligente/bill-it.git
