@@ -1,1 +1,1 @@
-docker build -t billit .
+docker build -t devel .

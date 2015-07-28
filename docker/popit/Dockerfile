@@ -10,16 +10,21 @@ RUN apt-get upgrade -y
 RUN apt-get install -y python-software-properties wget apt-file software-properties-common
 
 #---- PopIt specific package dependencies Repositories
-RUN echo 'deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' | sudo tee /etc/apt/sources.list.d/mongodb.list
+RUN echo 'deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' | \
+    sudo tee /etc/apt/sources.list.d/mongodb.list
+
 RUN apt-key adv --keyserver keyserver.ubuntu.com --recv 7F0CEB10
 RUN wget -O - http://packages.elasticsearch.org/GPG-KEY-elasticsearch | sudo apt-key add -
-RUN echo 'deb http://packages.elasticsearch.org/elasticsearch/0.90/debian stable main' | sudo tee /etc/apt/sources.list.d/elasticsearch.list
+RUN echo 'deb http://packages.elasticsearch.org/elasticsearch/0.90/debian stable main' | \
+    sudo tee /etc/apt/sources.list.d/elasticsearch.list
+
 RUN add-apt-repository ppa:chris-lea/node.js
 RUN apt-get update
 
 
 #-- Instalation of dependencies
-RUN apt-get install -y python g++ make nodejs mongodb-org openjdk-6-jre elasticsearch ruby1.9.1 ruby1.9.1-dev  git graphicsmagick unzip sendmail
+RUN apt-get install -y python g++ make nodejs mongodb-org openjdk-6-jre elasticsearch \
+    ruby1.9.1 ruby1.9.1-dev  git graphicsmagick unzip sendmail
 
 #-- Official  PopIt Repo
 RUN mkdir $src

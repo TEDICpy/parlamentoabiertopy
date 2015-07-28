@@ -1,5 +1,2 @@
-docker create  --name legislative \
-    --volumes-from data \
-    --link popit:popit \
-    legislative \
-    sh /legislative/init.sh
+docker create  --name legislative --volumes-from data -v /src --net="host" \
+       legislative sh /legislative/init.sh

@@ -1,5 +1,2 @@
-docker create  --name popit \
-    --volumes-from data \
-    -p 3000:3000 --net="host" \
-    popit \
-    sh /popit/init.sh
+docker create  --name popit --volumes-from data --net="host"  -v /src \
+    popit sh /popit/init.sh

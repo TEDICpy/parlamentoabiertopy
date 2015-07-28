@@ -1,9 +1,2 @@
-docker create  --name billit \
-       --volumes-from data \
-       -v /src \
-       --net="host" \
-       billit \
-       sh /src/bill-it/init.sh
-
-
-#       -e billit=billit  \
+##create container
+docker run -ti --rm --name devel --volumes-from data --volumes-from popit -v /src  --net="host"  devel /bin/bash
