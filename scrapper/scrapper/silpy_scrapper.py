@@ -386,8 +386,9 @@ class SilpyHTMLParser(object):
                 td1_span_list = td1.find_all('span')
                 #print "td1_span_list " + str(td1_span_list)
                 if len(td1_span_list) > 1:
-                    paperwork['stage'] = {'chamber': td1_span_list[0].text, 
-                                            td1_span_list[1].text : td1_span_list[2].text} 
+                    paperwork['chamber'] = td1_span_list[0].text                    
+                    paperwork['stage'] = td1_span_list[1].text.strip() + " " \
+                    + td1_span_list[2].text.strip()
 
             #resultado: the last column
             results_li= td_list[4].find_all('li',recursive=False)
@@ -743,6 +744,7 @@ class SilpyScrapper(object):
                 print "id de proyecto " + project['id']
                 project.update(self.navigator.get_project_details(project['id']))
                 m['projects'][index] = project
+                self.mongo_client.upsert_project(project)
                 index +=1
             if origin == 'S':
                 print "Guardando datos de Senadores"
