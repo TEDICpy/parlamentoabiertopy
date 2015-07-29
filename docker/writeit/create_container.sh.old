@@ -1,5 +1,0 @@
-docker create  --name writeit \
-    --volumes-from data \
-    writeit \
-    --net="host" \
-    sh /write-it/init.sh

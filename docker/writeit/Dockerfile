@@ -3,12 +3,12 @@ MAINTAINER  Ivan Florentin <ivan@sinergetica.com>
 EXPOSE 8000
 LABEL "version"="1.0"
 ENV data /data
-#ENTRYPOINT
 
 ENV LANG es_PY.UTF-8
 ENV LANGUAGE es_PY.UTF-8:es
 
-RUN touch /etc/writeit
+RUN touch /writeit
+
 RUN apt-get update
 RUN apt-get upgrade -y
 RUN apt-get install -y wget git sqlite3
@@ -54,31 +54,3 @@ RUN sqlite3 /data/writeit.db
 #CMD cd /write-it && python manage.py runserver 0.0.0.0:8000
 
 
-#RUN cd /write-it && ./manage.py syncdb
-#RUN cd /write-it && ./manage.py migrate
-#RUN cd /write-it && ./manage.py syncdb
-#RUN cd /write-it && ./manage.py migrate
-#RUN cd /writeit/config_examples/
-#RUN ./manage.py
-#RUN mkvirtualenv writeit
-#RUN . ../venv/bin/activate
-#RUN vim writeit.settings
-#RUN cp settings.py settings.py.original
-#RUN git clone https://github.com/ciudadanointeligente/write-it.git
-#RUN . venv/bin/activate
-#RUN ./manage.py syncdb && ./manage.py migrate
-#RUN ./manage.py runserver
-#RUN ./manage.py loaddata example_data.yaml
-#RUN ./manage.py runserver
-#RUN ./manage.py runserver
-#CMD cd /write-it && python manage.py runserver 0.0.0.0:8000
-#RUN python manage.py runserver 0.0.0.0:8000
-#RUN python manage.py runserver 192.168.122.77:9090
-#RUN python manage.py runserver 192.168.122.77:8000
-#RUN python manage.py runserver 192.168.122.77:8000
-#RUN mv writeit.db writeit.db.old
-#RUN ./manage.py syncdb && ./manage.py migrate
-#RUN python manage.py runserver 192.168.122.77:8000
-#RUN sqlite3 writeit.db
-#RUN python manage.py runserver 192.168.122.77:8000
-#ADD init.sh /write-it

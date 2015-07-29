@@ -2,9 +2,10 @@ FROM ubuntu:14.04
 MAINTAINER Ivan Florentin <ivan@sinergetica.com>
 ENV data /data
 ENV src /src
+ENV popit $src/popit
 
 # Sistem update and minimum needed packages
-RUN touch /pop-it
+RUN touch /popit.01
 RUN apt-get update
 RUN apt-get upgrade -y
 RUN apt-get install -y python-software-properties wget apt-file software-properties-common
@@ -29,7 +30,6 @@ RUN apt-get install -y python g++ make nodejs mongodb-org openjdk-6-jre elastics
 #-- Official  PopIt Repo
 RUN mkdir $src
 RUN cd $src && git clone https://github.com/mysociety/popit 
-ENV popit $src/popit
 
 #-- Local correction, Doesn't work without it
 ADD print.scss $popit/public/sass/
@@ -42,11 +42,12 @@ RUN gem install compass --version=0.12.2 --no-rdoc --no-ri
 #RUN mkdir /data && mkdir /data/db
 RUN cd $popit && make css
 
+RUN touch /popit.01c
 #-- Config files for Parlamentoabierto.org.py
 ADD init.sh $popit/
 ADD default.js $popit/config/
 
-VOLUME ["/src"]
+#VOLUME ["/src"]
 
 #-- Run it!
 CMD sh $popit/init.sh
