@@ -299,12 +299,13 @@ class SilpyHTMLParser(object):
         etapas_table = main_table.table.table
         status_statges_list = etapas_table.find_all('span', {'class': "itemResaltado3D-2"})
         stage_substage = status_statges_list[1].text.split("/")
-        etapa['stage'] = stage_substage[::-1][1]#next last element
+        etapa['stage'] = stage_substage[::-1][1]#next to last element
         etapa['sub_stage'] = stage_substage[::-1][0]#last element 
         etapa['status'] = status_statges_list[0].text.strip()
         bill['stage'] = etapa
 
-        #parse lateral menu and extract sextion 
+        #need to show sections and download related files
+        bill['sections_menu'] = self._extract_project_sections_menu(soup)
         
         #documentos de iniciativa            
         bill['documents'] = self._extract_project_documents(soup)
@@ -317,13 +318,46 @@ class SilpyHTMLParser(object):
         #resoluciones y mensajes -> reports?
         return bill
 
+    def _extract_project_sections_menu(self, soup):        
+        #parse lateral menu and extract sections 
+        #sections must be show to click on buttons
+        #clicking is done by the navigator
+        sections_menu = {}
+        sections_ul = soup.find(id='formMain:j_idt124').ul
+        a_list = sections_ul.find_all('a')
+        for a in a_list:            
+            #the text of the section is followd by [N]
+            #where N is the number of rows in that section
+            sections_menu['text'] = a.text.strip()
+            text = a.text
+            key = None
+            if u'Tramitación' in text: 
+                key = 'papaerwork'
+            elif u'Documentos de Iniciativa' in text:
+                key = 'documents'
+            elif u'Autores'in text:
+                key = 'authors'
+            elif u'Dictámenes'in text:
+                key = 'directives'
+            elif u'Resoluciones y Mensajes'in text:
+                key = 'resolutions'
+            elif u'Leyes y Decretos'in text:
+                key = 'laws_and_decrees'
+            else:
+                key = text.strip()
+            sections_menu[key] = {'text' : a.text.strip(), 'href': a['href']}
+                
+        return sections_menu
+
     def _extract_project_documents(self, soup):
         docs_tbody = soup.find(id='formMain:j_idt124:dataTableDetalle_data')
         if docs_tbody == None:
             return None
         documents = []
+        index = 0
         for tr in docs_tbody.find_all('tr', recursive=False):
             if tr.text.strip() == 'Sin registros...':
+                #nothing found
                 break
             td_list = tr.find_all('td',recursive=False)
             doc = {}
@@ -332,8 +366,9 @@ class SilpyHTMLParser(object):
             doc['name'] = name[0].strip()
             doc['file_size'] = name[1].strip().replace('[', '').replace(']', '')
             doc['registration_date'] = td_list[2].text.strip()
-            #will be pressed somewhere
-            doc['button_id'] = tr.button['id']
+            doc['button_id'] = tr.button['id']#will be pressed somewhere
+            doc['index'] = index #list index correlates with table row index which is part of the button_id 
+            index += 1
             documents.append(doc)
         return documents
         
@@ -641,7 +676,7 @@ class SilpyNavigator(object):
         # find button by id button_id': u'formMain:dataTableDetalle:3:j_idt113'
         # and click it
         button = self.browser.find_element_by_id(button_id)
-        button.click()        
+        button.click()
         session_id = self.browser.get_cookie('JSESSIONID')['value']
         viewstate = self.parser.extract_viewstate(self.browser.page_source)
         #TODO async?
@@ -659,6 +694,26 @@ class SilpyNavigator(object):
         time.sleep(2)        
         bill = self.parser.extract_project_details(self.browser.page_source)
         #TODO: download all the files related to this project
+        #download files for documents
+        menu_element = self.browser.find_element_by_link_text(
+            bill['sections_menu']['documents']['text'])
+        menu_element.click()
+        #self.browser.get(_url+href)
+        time.sleep(2)
+        doc_index = 0
+        while (doc_index < len(bill['documents'])):
+            doc = bill['documents'][doc_index]
+            self.browser.find_element_by_id(doc['button_id']).click()
+            session_id = self.browser.get_cookie('JSESSIONID')['value']
+            viewstate = self.parser.extract_viewstate(self.browser.page_source)
+            doc['path'] = utils.download_bill_document(doc['index'],
+                                                       doc['name'],
+                                                       project_id,
+                                                       viewstate,
+                                                       session_id)
+            bill['documents'][doc_index] = doc
+            doc_index += 1
+                                                                    
         return bill
         
     def get_projects_by_committee(self):
@@ -751,8 +806,7 @@ class SilpyScrapper(object):
                 self.mongo_client.update_senador(m)
             elif origin == 'D':
                 print "Guardando datos de Diputados"
-                self.mongo_client.update_diputados(m)
-            
+                self.mongo_client.update_diputados(m)            
             
     def get_commiittees_by_period(self):
          periodo = '2014-2015'
