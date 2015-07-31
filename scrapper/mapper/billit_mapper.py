@@ -66,7 +66,7 @@ projects = mdb.projects.find()
 for p in projects:
     print "loading bill with uuid= %s" %(p['id']) 
     bill = Bill()
-    bill.uid = p['id']
+    bill.uid = p['id'] #use nro de expediente?
     bill.title = p['title']
     bill.creation_date = p['entry_date']
     bill.title = p['info']['subject']

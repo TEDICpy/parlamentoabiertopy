@@ -87,8 +87,7 @@ class SilpyHTMLParser(object):
                         designation = {'text': li.text.strip(), 'js_call': js_call}
                         designations.append(designation)
                     row['designations'] = designations
-            rows.append(row)
-            
+            rows.append(row)            
         return rows
 
     def parse_projects_by_parlamentary(self, html):
@@ -207,7 +206,6 @@ class SilpyHTMLParser(object):
 
                 if len(project) != 0:        
                     projects.append(project)
-
         return projects
 
     def parsear_lista_de_proyectos_dialog(html):
@@ -313,42 +311,44 @@ class SilpyHTMLParser(object):
         bill['paperworks'] = self._extract_project_paperworks(soup)
         #autores
         bill['authors'] = self._extract_project_authors(soup)
-        #directives formMain:j_idt124:j_idt203
+        # ?? dictamenes formMain:j_idt124:j_idt203
         bill['directives'] = self._extract_project_directives(soup)
-        #resoluciones y mensajes -> reports?
+        #resoluciones y mensajes -> ?
+        if 'resolutions_and_messages' in bill['sections_menu']:
+            bill['resolutions_and_messages'] = self._extract_projects_resolutions_and_messages(soup)            
         return bill
 
-    def _extract_project_sections_menu(self, soup):        
-        #parse lateral menu and extract sections 
-        #sections must be show to click on buttons
-        #clicking is done by the navigator
-        sections_menu = {}
-        sections_ul = soup.find(id='formMain:j_idt124').ul
-        a_list = sections_ul.find_all('a')
-        for a in a_list:            
-            #the text of the section is followd by [N]
-            #where N is the number of rows in that section
-            sections_menu['text'] = a.text.strip()
-            text = a.text
-            key = None
-            if u'Tramitación' in text: 
-                key = 'papaerwork'
-            elif u'Documentos de Iniciativa' in text:
-                key = 'documents'
-            elif u'Autores'in text:
-                key = 'authors'
-            elif u'Dictámenes'in text:
-                key = 'directives'
-            elif u'Resoluciones y Mensajes'in text:
-                key = 'resolutions'
-            elif u'Leyes y Decretos'in text:
-                key = 'laws_and_decrees'
-            else:
-                key = text.strip()
-            sections_menu[key] = {'text' : a.text.strip(), 'href': a['href']}
-                
-        return sections_menu
-
+    def _extract_projects_resolutions_and_messages(self, soup):
+        resolutions_and_messages = []
+        main_tbody = soup.find(id= 'formMain:j_idt124:j_idt220_data')
+        if main_tbody:
+            tr_list = main_tbody.find_all('tr', recursive=False)
+            for tr in tr_list:
+                td_list = tr.find_all('td', recursive=False)
+                #1. CAMARA DE SENADORES
+                #Resolución :
+                #Mensaje : 334 15/04/2014
+                texts = td_list[0].div.text.split('\n')
+                #remove empty string elements
+                texts = [x for x in texts if x != '']
+                #Versions: only buttons apparently, easy
+                buttons = []
+                dt_list = td_list[1].find_all('dt')
+                index = 0
+                for dt in dt_list:
+                    buttons.append({'index': index,
+                                    'file_name': dt.text.replace('ui-button ', '').strip(),
+                                     'id': dt.button['id']})
+                    index += 1
+                    
+                resolutions_and_messages.append({'index': texts[0].split('.')[0],
+                                   'chamber': texts[0].split('.')[1].strip(),
+                                   'message': texts[2].split(':')[1].strip(),
+                                   'date': texts[3].strip(),
+                                   'directive': texts[4].strip(),
+                                   'buttons': buttons})
+        return resolutions_and_messages
+     
     def _extract_project_documents(self, soup):
         docs_tbody = soup.find(id='formMain:j_idt124:dataTableDetalle_data')
         if docs_tbody == None:
@@ -373,13 +373,17 @@ class SilpyHTMLParser(object):
         return documents
         
     def _extract_project_directives(self, soup):
+        #TODO: result column presents different structures
+        #first row is committee:
+        #   1. Economía, Cooperativismo, Desarrollo e Integración Económica Latinoamericana
+        #   chamber
         main = soup.find(id='formMain:j_idt124:j_idt203')
         if main == None:
             return None
         directives_tbody = main.find('tbody')
-
         tr_list = directives_tbody.find_all('tr', recursive=False)
         directives = []
+        index = 0
         for tr in tr_list:
             directive = {}
             td_list = tr.find_all('td', recursive=False)
@@ -387,10 +391,20 @@ class SilpyHTMLParser(object):
             res_date =  text[:text.find('\n')].split(' ')
             directive['result'] = res_date[0]
             directive['date'] = res_date[1]
+            directive['index'] = index
             #will be pressed somewhere
-            if td_list[1].button:
-                directive['button_id'] = td_list[1].button['id']
-            directives.append(directive)            
+            buttons = []
+            buttons_elements = td_list[1].find_all('button')
+            b_index = 0
+            for b in buttons_elements:
+                #extract here index of the button
+                #that will be used in the body of the request
+                buttons.append({'index': b_index,
+                                'id': td_list[1].button['id']})
+                b_index +=1
+            directive['buttons'] = buttons
+            directives.append(directive)
+            index += 1
         return directives
         
     def _extract_project_authors(self, soup):
@@ -424,7 +438,6 @@ class SilpyHTMLParser(object):
                     paperwork['chamber'] = td1_span_list[0].text                    
                     paperwork['stage'] = td1_span_list[1].text.strip() + " " \
                     + td1_span_list[2].text.strip()
-
             #resultado: the last column
             results_li= td_list[4].find_all('li',recursive=False)
             result_text = td_list[4].text#find(text=True, recursive=False)
@@ -456,12 +469,41 @@ class SilpyHTMLParser(object):
                 li_list = ul[0].find_all('li')
                 for li in li_list:
                     result['details'].append(li.text.strip())
-
             #todo clean up result before adding
             paperwork['result'] = result
             paperworks.append(paperwork)
-        
         return paperworks
+
+    def _extract_project_sections_menu(self, soup):        
+        #parse lateral menu and extract sections 
+        #sections must be show to click on buttons
+        #clicking is done by the navigator
+        sections_menu = {}
+        sections_ul = soup.find(id='formMain:j_idt124').ul
+        a_list = sections_ul.find_all('a')
+        for a in a_list:            
+            #the text of the section is followd by [N]
+            #where N is the number of rows in that section
+            sections_menu['text'] = a.text.strip()
+            text = a.text
+            key = None
+            if u'Tramitación' in text: 
+                key = 'papaerwork'
+            elif u'Documentos de Iniciativa' in text:
+                key = 'documents'
+            elif u'Autores'in text:
+                key = 'authors'
+            elif u'Dictámenes'in text:
+                key = 'directives'
+            elif u'Resoluciones y Mensajes'in text:
+                key = 'resolutions_and_messages'
+            elif u'Leyes y Decretos'in text:
+                key = 'attachment' #?
+            else:
+                key = text.strip()
+            sections_menu[key] = {'text' : a.text.strip(), 'href': a['href']}                
+        return sections_menu
+
        
     def extraer_miembros_por_comision(self, html):
         soup = BeautifulSoup(html)
@@ -515,13 +557,16 @@ class SilpyNavigator(object):
     Naviagation Flow for http://silpy.congreso.gov.py
     """
 
-    def __init__(self, browser=None):
+    def __init__(self, browser=None, navigate=True):
         self.parser = SilpyHTMLParser()
+        if not navigate:
+            print 'WARNING: not using webdriver, for development purposses only'
+            return
         if browser:
             self.browser=browser
         else:
             self.browser = utils.get_new_browser()
-        self.browser.get("http://silpy.congreso.gov.py/main.pmf")                               
+            self.browser.get("http://silpy.congreso.gov.py/main.pmf")                               
 
     def close_driver(self):
        self.browser.close() 
@@ -691,14 +736,70 @@ class SilpyNavigator(object):
         #wait
         #TODO: extract result count
         #wait to find that index
-        time.sleep(2)        
+        time.sleep(2)
         bill = self.parser.extract_project_details(self.browser.page_source)
+        bill['id'] = project_id
         #TODO: download all the files related to this project
         #download files for documents
+        #bill = self._download_bill_documents(bill)
+        if 'directives' in bill['sections_menu']:
+            bill = self._download_bill_directives(bill)
+        if 'resolutions_and_messages' in bill['sections_menu']:
+            bill = self._download_bill_resolutions_and_messages(bill)
+        return bill
+
+    def _download_bill_directives(self, bill):
         menu_element = self.browser.find_element_by_link_text(
-            bill['sections_menu']['documents']['text'])
+            bill['sections_menu']['directives']['text'])
         menu_element.click()
-        #self.browser.get(_url+href)
+        time.sleep(2) 
+        index = 0
+        #directives may have more than one file associated with each row
+        while (index < len(bill['directives'])):
+            directive = bill['directives'][index]
+            for button in directive['buttons']:
+                self.browser.find_element_by_id(button['id']).click()
+                time.sleep(1)
+                session_id = self.browser.get_cookie('JSESSIONID')['value']
+                viewstate = self.parser.extract_viewstate(self.browser.page_source)
+                button['path'] = utils.download_bill_directive(directive['index'],
+                                                               button['index'],
+                                                               bill['id'],
+                                                               viewstate,
+                                                               session_id)
+            bill['directives'][index] = doc
+            index += 1
+        return bill
+    
+    def _download_bill_resolutions_and_messages(self, bill):
+        menu_element = self.browser.find_element_by_link_text(
+        bill['sections_menu']['resolutions_and_messages']['text'])
+        menu_element.click()
+        time.sleep(2)
+        index = 0
+        #these have more than one file associated with each row
+        while (index < len(bill['resolutions_and_messages'])):
+            directive = bill['resolutions_and_messages'][index]
+            for button in directive['buttons']:
+                self.browser.find_element_by_id(button['id']).click()
+                time.sleep(1)
+                session_id = self.browser.get_cookie('JSESSIONID')['value']
+                viewstate = self.parser.extract_viewstate(self.browser.page_source)
+                button['path'] = utils.download_bill_directive(directive['index'],
+                                                               button['index'],
+                                                               button['name'],
+                                                               bill['id'],
+                                                               viewstate,
+                                                               session_id)
+            bill['resolutions_and_messages'][index] = doc
+            index += 1
+        return bill
+    
+    
+    def _download_bill_documents(self, bill):
+        menu_element = self.browser.find_element_by_link_text(
+        bill['sections_menu']['documents']['text'])
+        menu_element.click()
         time.sleep(2)
         doc_index = 0
         while (doc_index < len(bill['documents'])):
@@ -708,14 +809,13 @@ class SilpyNavigator(object):
             viewstate = self.parser.extract_viewstate(self.browser.page_source)
             doc['path'] = utils.download_bill_document(doc['index'],
                                                        doc['name'],
-                                                       project_id,
+                                                       bill['id'],
                                                        viewstate,
                                                        session_id)
             bill['documents'][doc_index] = doc
             doc_index += 1
-                                                                    
         return bill
-        
+    
     def get_projects_by_committee(self):
         #TODO
         # 1 - seleccionar del menu principal Proyectos por Comisión
