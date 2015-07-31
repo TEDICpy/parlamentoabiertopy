@@ -757,17 +757,19 @@ class SilpyNavigator(object):
         #directives may have more than one file associated with each row
         while (index < len(bill['directives'])):
             directive = bill['directives'][index]
+            files = []
             for button in directive['buttons']:
                 self.browser.find_element_by_id(button['id']).click()
                 time.sleep(1)
                 session_id = self.browser.get_cookie('JSESSIONID')['value']
                 viewstate = self.parser.extract_viewstate(self.browser.page_source)
-                button['path'] = utils.download_bill_directive(directive['index'],
+                files.append(utils.download_bill_directive(directive['index'],
                                                                button['index'],
                                                                bill['id'],
                                                                viewstate,
-                                                               session_id)
-            bill['directives'][index] = doc
+                                                               session_id))
+                
+            bill['directives'][index]['files'] = files
             index += 1
         return bill
     
@@ -802,6 +804,7 @@ class SilpyNavigator(object):
         menu_element.click()
         time.sleep(2)
         doc_index = 0
+
         while (doc_index < len(bill['documents'])):
             doc = bill['documents'][doc_index]
             self.browser.find_element_by_id(doc['button_id']).click()

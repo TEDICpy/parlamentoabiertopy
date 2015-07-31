@@ -1,5 +1,6 @@
 #-*- coding: utf-8 -*-
 import os
+import hashlib
 from subprocess import call
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
@@ -58,8 +59,10 @@ def read_file_as_string(file):
 
 def curl_command(session_id, url, data, filename, dir):
      if not os.path.exists(dir):
-          os.makedirs(dirname)
-          
+          os.makedirs(dir)
+
+     if dir[::-1].index('/'):
+          dir += '/' 
      #give a generic name
      #read the actualname from the .header file
      #rename the fiel to the name in the header file
@@ -76,7 +79,7 @@ def curl_command(session_id, url, data, filename, dir):
           +' -H "Cookie: primefaces.download=true; JSESSIONID='+ session_id + '"'\
           +' -H "Connection: keep-alive"'\
           +' -H "Content-Type: application/x-www-form-urlencoded"'\
-          +' --data '+ data\
+          +' --data "'+ data + '"'\
           +' --compressed'\
           +' -o ' + out \
           +' --dump-header ' + out+'.header'\
@@ -85,7 +88,12 @@ def curl_command(session_id, url, data, filename, dir):
      os.system(command)
      f = open(out+'.header')
      lines = f.readlines()
-     r = [x for x in lines if 'filename' in x][0]
+     r = [x for x in lines if 'filename' in x]
+     print "-----------------------------------"
+     print r
+     print "-----------------------------------"
+     if len(r) == 1:
+          r = r[0]
      new_filename = r[r.index('filename')+len('filename='):r.index('\r')].replace('"','')
      os.rename(out, dir+new_filename)
      return dir+new_filename
@@ -93,15 +101,17 @@ def curl_command(session_id, url, data, filename, dir):
 def download_bill_directive(row_index, button_index, project_id, viewstate, session_id):
      #use the whole button id after the &?
      #dictamenes
+     url = "http://sil2py.senado.gov.py/formulario/VerDetalleTramitacion.pmf"
+     print row_index, button_index, project_id, viewstate, session_id
      if button_index == None:
           button_index = 0          
      data = 'formMain=formMain&formMain%3Aj_idt124%3Aj_idt203%3A'+ \
-            row_index + \
+            str(row_index) + \
             '%3Aj_idt211%3A' +  str(button_index) + \
             '%3Aj_idt214%3A0%3Aj_idt216=&formMain%3Aj_idt124_activeIndex=3&javax.faces.ViewState=' + \
             viewstate
      dirname = 'download/bills/dictaminations/%s' %(project_id)
-     return download_request(session_id, url, data, None, dirname)
+     return curl_command(session_id, url, data, None, dirname)
 
 def download_bill_resolutions_and_messages(row_index, button_index, project_id, viewstate, session_id):
      if button_index == None:
