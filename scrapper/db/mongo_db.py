@@ -1,3 +1,4 @@
+#-*- coding: utf-8 -*-
 from pymongo import MongoClient
 
 client = MongoClient('localhost', 27017)
@@ -13,7 +14,15 @@ class SilpyMongoClient(object):
         results = db_projects.insert_many(projects)# insert projects
         return results
 
-    def upsert_projects(self, projects):
+    def upsert_project(self, project):
+        results = []
+        db_projects = self.db.projects #initialize collection        
+        id = project['id']
+        print 'upserting project %s' %(id)
+        result = db_projects.update({'id':id}, {'$set':project}, True)
+        return result
+
+    def upsert_projects(self, projects):        
         #saves a list of projects and returns the list of
         #object ids
         results = []
@@ -122,3 +131,6 @@ class SilpyMongoClient(object):
         db_diputados = self.db.diputados
         return db_diputados.find()
 
+    def get_all_projects(self):
+        db_projects = self.db.projects
+        return db_projects.find()
