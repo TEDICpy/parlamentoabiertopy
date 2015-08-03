@@ -1,1 +1,1 @@
-docker run -d --name billit  --volumes-from data -v /src --net="host" billit sh /src/bill-it/init.sh
+docker run --net=host --rm -ti --name billit -v /homes/ivan/devel/Sinergetica/TEDIC/github/src:/src -v /homes/ivan/devel/Sinergetica/TEDIC/github/parlamentoabiertopy/docker/init:/init --volumes-from data billit sh /init/billit-init.sh

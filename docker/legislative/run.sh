@@ -1,1 +1,1 @@
-docker run --name legislative -d --volumes-from data --net="host" -v /src legislative /bin/bash
+docker run --net=host --rm -ti --name legislative -v /homes/ivan/devel/Sinergetica/TEDIC/github/src:/src -v /homes/ivan/devel/Sinergetica/TEDIC/github/parlamentoabiertopy/docker/init:/init --volumes-from data legislative sh /init/legislative-init.sh

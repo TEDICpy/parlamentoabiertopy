@@ -26,16 +26,16 @@ RUN cd $src && git clone https://github.com/ciudadanointeligente/write-it.git
 RUN locale-gen es_PY.UTF-8
 
 ADD settings.py $writeit/writeit/
-ADD init.sh /
+ADD init.sh $writeit
 ADD db_init.sh /
 
 RUN cd $writeit  && pip install -r requirements.txt
 
-VOLUME ["/src"]
+#VOLUME ["/src"]
 RUN mkdir /data
-VOLUME ["/data"]
+#VOLUME ["/data"]
 
-RUN sqlite3 /data/writeit.db
+#RUN sqlite3 /data/writeit.db
 
 
 #  levantar la imagen con
