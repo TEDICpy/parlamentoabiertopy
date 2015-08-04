@@ -324,29 +324,42 @@ class SilpyHTMLParser(object):
         if main_tbody:
             tr_list = main_tbody.find_all('tr', recursive=False)
             for tr in tr_list:
+                res = {}
                 td_list = tr.find_all('td', recursive=False)
                 #1. CAMARA DE SENADORES
                 #Resolución :
                 #Mensaje : 334 15/04/2014
-                texts = td_list[0].div.text.split('\n')
-                #remove empty string elements
-                texts = [x for x in texts if x != '']
                 #Versions: only buttons apparently, easy
                 buttons = []
                 dt_list = td_list[1].find_all('dt')
                 index = 0
                 for dt in dt_list:
                     buttons.append({'index': index,
-                                    'file_name': dt.text.replace('ui-button ', '').strip(),
-                                     'id': dt.button['id']})
+                                    'name': dt.text.replace('ui-button ', '').strip(),
+                                    'id': dt.button['id']})
                     index += 1
-                    
-                resolutions_and_messages.append({'index': texts[0].split('.')[0],
-                                   'chamber': texts[0].split('.')[1].strip(),
-                                   'message': texts[2].split(':')[1].strip(),
-                                   'date': texts[3].strip(),
-                                   'directive': texts[4].strip(),
-                                   'buttons': buttons})
+                res['buttons'] = buttons
+                #the first column contains a table within a table
+                #iterate over rows and extracts elements
+                #columns resolution/message label - id(number) - date(may or may not be present)
+                inner_tr_list = td_list[0].table.tbody.find_all('tr', recursive=False)
+                #1st row - chamber
+                res['index'] = inner_tr_list[0].text.strip().split('.')[0]
+                res['chamber'] = inner_tr_list[0].text.strip().split('.')[1]
+                #2nd row is a table resolution: id - date
+                final_tr_list = inner_tr_list[1].table.tbody.find_all('tr', recursive=False)
+                #it has 2 rows and up to 3 columns
+                #extracts empty elements from list
+                resolution = [x for x in final_tr_list[0].text.split('\n') if x != '']
+                message = [x for x in final_tr_list[1].text.split('\n') if x != '']
+                res['resolution_number'] = resolution[0].split(':')[1].strip()
+                if len(resolution) > 1:
+                    res['resolution_date'] = resolution[1].strip()
+                if len(message) > 1:
+                    res['message_date'] = message[1].strip()
+                res['message_number'] = message[0].split(':')[1].strip()
+                res['result'] = inner_tr_list[3].text.strip()
+                resolutions_and_messages.append(res)
         return resolutions_and_messages
      
     def _extract_project_documents(self, soup):
@@ -741,11 +754,16 @@ class SilpyNavigator(object):
         bill['id'] = project_id
         #TODO: download all the files related to this project
         #download files for documents
-        #bill = self._download_bill_documents(bill)
+        print "Downloading %s for bill id %s" %('documents', bill['id'])
+        bill = self._download_bill_documents(bill)
         if 'directives' in bill['sections_menu']:
+            print "Downloading %s for bill id %s" %('directives', bill['id'])
             bill = self._download_bill_directives(bill)
         if 'resolutions_and_messages' in bill['sections_menu']:
+            print "Downloading %s for bill id %s" %('resolutions and messages', bill['id'])
             bill = self._download_bill_resolutions_and_messages(bill)
+
+        print '--------------------------------------------------------------'
         return bill
 
     def _download_bill_directives(self, bill):
@@ -757,6 +775,7 @@ class SilpyNavigator(object):
         #directives may have more than one file associated with each row
         while (index < len(bill['directives'])):
             directive = bill['directives'][index]
+            print "downloading directive index: %s" %(directive['index'])
             files = []
             for button in directive['buttons']:
                 self.browser.find_element_by_id(button['id']).click()
@@ -781,22 +800,21 @@ class SilpyNavigator(object):
         index = 0
         #these have more than one file associated with each row
         while (index < len(bill['resolutions_and_messages'])):
-            directive = bill['resolutions_and_messages'][index]
-            for button in directive['buttons']:
+            obj = bill['resolutions_and_messages'][index]
+            for button in obj['buttons']:
                 self.browser.find_element_by_id(button['id']).click()
                 time.sleep(1)
                 session_id = self.browser.get_cookie('JSESSIONID')['value']
                 viewstate = self.parser.extract_viewstate(self.browser.page_source)
-                button['path'] = utils.download_bill_directive(directive['index'],
+                button['path'] = utils.download_bill_resolutions_and_messages(index,
                                                                button['index'],
                                                                button['name'],
                                                                bill['id'],
                                                                viewstate,
                                                                session_id)
-            bill['resolutions_and_messages'][index] = doc
+            bill['resolutions_and_messages'][index] = obj
             index += 1
         return bill
-    
     
     def _download_bill_documents(self, bill):
         menu_element = self.browser.find_element_by_link_text(
@@ -804,7 +822,6 @@ class SilpyNavigator(object):
         menu_element.click()
         time.sleep(2)
         doc_index = 0
-
         while (doc_index < len(bill['documents'])):
             doc = bill['documents'][doc_index]
             self.browser.find_element_by_id(doc['button_id']).click()
@@ -892,7 +909,6 @@ class SilpyScrapper(object):
             members  = self.mongo_client.get_all_senators()
         elif origin == 'D':
             members  = self.mongo_client.get_all_deputies()
-        
         for m in members: 
             print "Extrayendo proyectos de %s " %(m['name'])
             projects = m['projects']                 
