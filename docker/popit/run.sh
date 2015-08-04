@@ -1,1 +1,1 @@
-docker run --rm --name popit -ti -v /homes/ivan/devel/Sinergetica/TEDIC/github/parlamentoabiertopy/docker/init:/init -v /homes/ivan/devel/Sinergetica/TEDIC/github/src:/src --volumes-from data --net=host popit sh /init/popit-init.sh
+docker run --net=host --rm -ti  --name popit  -v /root/devel/src:/src -v /root/devel/parlamentoabiertopy/docker/init:/init --volumes-from data popit sh /init/popit-init.sh
