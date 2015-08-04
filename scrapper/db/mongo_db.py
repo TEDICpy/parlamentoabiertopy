@@ -134,3 +134,6 @@ class SilpyMongoClient(object):
     def get_all_projects(self):
         db_projects = self.db.projects
         return db_projects.find()
+
+    def save_error(self, error):
+        self.db.errors.insert(error)

@@ -130,8 +130,7 @@ class SilpyHTMLParser(object):
                 values["stage"] = td_list[1].text 
                 statistics.append(values)
         else:
-            write_html(html)
-  
+            write_html(html)  
         return statistics
 
     def _extract_projects_by_committee(self, html):
@@ -202,8 +201,7 @@ class SilpyHTMLParser(object):
                     #print "td1_span_list " + str(td1_span_list)
                     if len(td1_span_list) > 1:
                         project['estage'] = {'chamber': td1_span_list[0].text, 
-                                             td1_span_list[1].text : td1_span_list[2].text} 
-
+                                             td1_span_list[1].text : td1_span_list[2].text}
                 if len(project) != 0:        
                     projects.append(project)
         return projects
@@ -564,6 +562,7 @@ from selenium.webdriver.support import expected_conditions as E
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.by import By
+from utils.utils import FileDownloadError
 
 class SilpyNavigator(object):
     """
@@ -572,6 +571,7 @@ class SilpyNavigator(object):
 
     def __init__(self, browser=None, navigate=True):
         self.parser = SilpyHTMLParser()
+        self.mongo_client = SilpyMongoClient()
         if not navigate:
             print 'WARNING: not using webdriver, for development purposses only'
             return
@@ -613,6 +613,19 @@ class SilpyNavigator(object):
         if js_call:
             self.browser.execute_script(js_call)
 
+    def _log_error(self, err, id, method, index):
+        #TODO: improve
+        error = {}
+        error['type'] = 'file_download'
+        error['object'] = 'bill'
+        error['id'] = id
+        error['msg'] = err.msg
+        error['curl_command'] = err.curl_command
+        error['downloader'] = method
+        error['row'] = index
+        self.mongo_client.save_error(error)
+
+    
     def get_parlamentary_list(self, origin):
         """returns the list of parlamentraries for the period 2008-2013
            @origin: S=senadores, D=diputados """
@@ -741,6 +754,7 @@ class SilpyNavigator(object):
         utils.download_file(origin, session_id, viewstate, filename)
         
     def get_project_details(self, project_id):
+        print '--------------------------------------------------------------'
         #obtiene una comision e invoca a la url:
         #GET http://silpy.congreso.gov.py/formulario/VerDetalleTramitacion.pmf?q=VerDetalleTramitacion%2F + project_id
         _url = "http://silpy.congreso.gov.py/formulario/VerDetalleTramitacion.pmf"+ \
@@ -770,7 +784,7 @@ class SilpyNavigator(object):
         menu_element = self.browser.find_element_by_link_text(
             bill['sections_menu']['directives']['text'])
         menu_element.click()
-        time.sleep(2) 
+        time.sleep(2)
         index = 0
         #directives may have more than one file associated with each row
         while (index < len(bill['directives'])):
@@ -782,12 +796,17 @@ class SilpyNavigator(object):
                 time.sleep(1)
                 session_id = self.browser.get_cookie('JSESSIONID')['value']
                 viewstate = self.parser.extract_viewstate(self.browser.page_source)
-                files.append(utils.download_bill_directive(directive['index'],
-                                                               button['index'],
-                                                               bill['id'],
-                                                               viewstate,
-                                                               session_id))
-                
+                try:
+                    files.append(utils.download_bill_directive(directive['index'],
+                                                           button['index'],
+                                                           bill['id'],
+                                                           viewstate,
+                                                           session_id))
+                except FileDownloadError, err:
+                    #write to mongodb
+                    print err.msg
+                    self._log_error(err, bill['id'],'_download_bill_directives', index)
+                    
             bill['directives'][index]['files'] = files
             index += 1
         return bill
@@ -806,12 +825,17 @@ class SilpyNavigator(object):
                 time.sleep(1)
                 session_id = self.browser.get_cookie('JSESSIONID')['value']
                 viewstate = self.parser.extract_viewstate(self.browser.page_source)
-                button['path'] = utils.download_bill_resolutions_and_messages(index,
+                try:
+                    button['path'] = utils.download_bill_resolutions_and_messages(index,
                                                                button['index'],
                                                                button['name'],
                                                                bill['id'],
                                                                viewstate,
                                                                session_id)
+                except FileDownloadError, err:
+                    #write to mongodb
+                    print err.msg
+                    self._log_error(err, bill['id'], '_download_bill_resolutions_and_messages', index)
             bill['resolutions_and_messages'][index] = obj
             index += 1
         return bill
@@ -917,15 +941,15 @@ class SilpyScrapper(object):
                 project = projects[index]
                 print "id de proyecto " + project['id']
                 project.update(self.navigator.get_project_details(project['id']))
-                m['projects'][index] = project
                 self.mongo_client.upsert_project(project)
                 index +=1
-            if origin == 'S':
-                print "Guardando datos de Senadores"
-                self.mongo_client.update_senador(m)
-            elif origin == 'D':
-                print "Guardando datos de Diputados"
-                self.mongo_client.update_diputados(m)            
+            #     m['projects'][index] = project
+            # if origin == 'S':
+            #     print "Guardando datos de Senadores"
+            #     self.mongo_client.update_senador(m)
+            # elif origin == 'D':
+            #     print "Guardando datos de Diputados"
+            #     self.mongo_client.update_diputados(m)            
             
     def get_commiittees_by_period(self):
          periodo = '2014-2015'

@@ -39,7 +39,6 @@ def senadores():
     senadores_scrapper.extract_senators_data()
     #senadores_scrapper.get_all_articles()
 
-
 @click.command(help="extrae solo los datos de los diputados")
 def diputados():
     print 'scrapping diputados'
@@ -53,11 +52,29 @@ def diputados():
 def map_popit_data():
     print 'Exportando a popit'
     map_popit()
-
+    
+@click.command(help="descarga los proyectos de leyes")
+@click.option('--origin', default='all', help="origen de datos, 'all' para todos," +
+              " 's' para senadores y 'd' para diputados")
+def bills(origin):
+    
+    if origin == 'all':
+        silpy_senadores = SilpyScrapper()
+        silpy_senadores.update_members_bills_from_db('S')
+        silpy_diputados = SilpyScrapper()
+        silpy_diputados.update_members_bills_from_db('D')
+    elif origin == 's':
+        silpy_senadores = SilpyScrapper()
+        silpy_senadores.update_members_bills_from_db('S')
+    elif origin == 'd':
+        silpy_diputados = SilpyScrapper()
+        silpy_diputados.update_members_bills_from_db('D')
+    
 cli.add_command(all)
 cli.add_command(senadores)
 cli.add_command(diputados)
 cli.add_command(map_popit_data)
+cli.add_command(bills)
 
 if __name__ == "__main__":
     cli()
