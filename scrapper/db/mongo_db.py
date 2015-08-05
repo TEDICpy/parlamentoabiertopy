@@ -137,3 +137,21 @@ class SilpyMongoClient(object):
 
     def save_error(self, error):
         self.db.errors.insert(error)
+
+    def directive_exists(self, bill_id, hash):
+        #returns true if the bill directives contains the hash
+        #TODO: highly inneficient code, query the database instead:
+        #http://docs.mongodb.org/manual/tutorial/query-documents/
+        #db.projects.find_one({'id': '103209'}, {'directives':{'$elemMatch':{'date':'24/09/2014'}}})
+        project = self.db.projects.find_one({'id': bill_id})
+        if project != None:
+            if 'directives' in project:
+                for d in project['directives']:
+                    if 'files' in d:
+                        for f in d['files']:
+                            if hash in f.keys():
+                                return True
+                            
+                                
+        return False
+                        
