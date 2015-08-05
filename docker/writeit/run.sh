@@ -1,1 +1,1 @@
-docker run --net=host --rm -ti  --name writeit  -v /root/devel/src:/src -v /root/devel/parlamentoabiertopy/docker/init:/init --volumes-from data writeit sh /init/writeit-init.sh
+docker run --net="host" -d  --name writeit  -v $PA_SRC:/src -v $PA_INIT:/init --volumes-from data writeit sh /init/writeit-init.sh
