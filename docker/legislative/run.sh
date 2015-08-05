@@ -1,1 +1,1 @@
-docker run --net=host --rm -ti --name legislative -v /root/devel/src:/src -v /root/devel/parlamentoabiertopy/docker/init:/init --volumes-from data legislative sh /init/legislative-init.sh
+docker run --net="host" -d --name legislative -v $PA_SRC:/src -v $PA_INIT:/init --volumes-from data legislative sh /init/legislative-init.sh

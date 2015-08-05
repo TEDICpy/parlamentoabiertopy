@@ -1,1 +1,1 @@
-docker run --net=host --rm -ti  --name billit  -v /root/devel/src:/src -v /root/devel/parlamentoabiertopy/docker/init:/init --volumes-from data billit sh /init/billit-init.sh
+docker run --net="host" -d  --name billit  -v $PA_SRC:/src -v $PA_INIT:/init --volumes-from data billit sh /init/billit-init.sh
