@@ -3,7 +3,7 @@ PopIt Mapper Config File
 """
 
 #
-images_dir = '../download/img/'#where the scrapper stores downloaded images
+images_dir = 'download/img/'#where the scrapper stores downloaded images
 instance = 'parlamento'
 hostname = 'parlamento.popit.parlamentoabierto.org.py'
 port = 8000
