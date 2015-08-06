@@ -32,6 +32,8 @@ for p in projects:
         bill.uid = p['file'] #use nro de expediente?
     if 'title' in p:
         bill.title = p['title']
+    if 'id' in p:
+        bill.title = p['id']
     if 'entry_date' in p:
         bill.creation_date = p['entry_date']
     if 'info' in p:
