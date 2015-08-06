@@ -5,6 +5,7 @@ Created on Feb 26, 2015
 @author: demian
 '''
 
+import traceback
 import httplib
 import json
 import urllib
@@ -333,7 +334,7 @@ class SilpyHTMLParser(object):
                 if len(itr.text.strip()) > 1:
                     k,v = itr.text.strip().split('\n')
                     info[k] = v
-            info['button'] = tr.find('button')
+            info['button_id'] = tr.find('button')['id']
             result.append(info)
         return result
 
@@ -633,19 +634,6 @@ class SilpyNavigator(object):
                 break
         if js_call:
             self.browser.execute_script(js_call)
-
-    def _log_error(self, err, id, method, index):
-        #TODO: improve
-        error = {}
-        error['type'] = 'file_download'
-        error['object'] = 'bill'
-        error['id'] = id
-        error['msg'] = err.msg
-        error['curl_command'] = err.curl_command
-        error['downloader'] = method
-        error['row'] = index
-        self.mongo_client.save_error(error)
-
     
     def get_parlamentary_list(self, origin):
         """returns the list of parlamentraries for the period 2008-2013
@@ -684,8 +672,7 @@ class SilpyNavigator(object):
         url='http://sil2py.senado.gov.py/formulario/verProyectosParlamentario.pmf'\
           +'?q=verProyectosParlamentario%2F' + member_id
         self.browser.get(url)
-        utils.wait_for_document_ready(self.browser)
-#        #self.wait_for_document_ready(
+        time.sleep(2)
         utils.wait_for_document_ready(self.browser)
         html = self.browser.page_source
         s = BeautifulSoup(html)
@@ -697,7 +684,6 @@ class SilpyNavigator(object):
             #self.wait_for_document_ready(
             utils.wait_for_document_ready(self.browser)
             html = self.browser.page_source
-#        browser.close()
         return html
 
     def buscar_comisiones_por_periodo(self, period):
@@ -775,31 +761,40 @@ class SilpyNavigator(object):
         utils.download_file(origin, session_id, viewstate, filename)
         
     def get_project_details(self, project_id):
-        print '--------------------------------------------------------------'
-        #obtiene una comision e invoca a la url:
-        #GET http://silpy.congreso.gov.py/formulario/VerDetalleTramitacion.pmf?q=VerDetalleTramitacion%2F + project_id
-        _url = "http://silpy.congreso.gov.py/formulario/VerDetalleTramitacion.pmf"+ \
-               "?q=VerDetalleTramitacion%2F" + project_id
-        self.browser.get(_url)
-        #wait
-        #TODO: extract result count
-        #wait to find that index
-        time.sleep(2)
-        bill = self.parser.extract_project_details(self.browser.page_source)
-        bill['id'] = project_id
-        #TODO: download all the files related to this project
-        #download files for documents
-        print "Downloading %s for bill id %s" %('documents', bill['id'])
-        bill = self._download_bill_documents(bill)
-        if 'directives' in bill['sections_menu']:
-            print "Downloading %s for bill id %s" %('directives', bill['id'])
-            bill = self._download_bill_directives(bill)
-        if 'resolutions_and_messages' in bill['sections_menu']:
-            print "Downloading %s for bill id %s" %('resolutions and messages', bill['id'])
-            bill = self._download_bill_resolutions_and_messages(bill)
-
-        print '--------------------------------------------------------------'
-        return bill
+        try:
+            print '--------------------------------------------------------------'
+            #obtiene una comision e invoca a la url:
+            #GET http://silpy.congreso.gov.py/formulario/VerDetalleTramitacion.pmf?q=VerDetalleTramitacion%2F + project_id
+            _url = "http://silpy.congreso.gov.py/formulario/VerDetalleTramitacion.pmf"+ \
+                   "?q=VerDetalleTramitacion%2F" + project_id
+            self.browser.get(_url)
+            #wait
+            #TODO: extract result count
+            #wait to find that index
+            time.sleep(2)
+            bill = self.parser.extract_project_details(self.browser.page_source)
+            bill['id'] = project_id
+            #TODO: download all the files related to this project
+            #download files for documents
+            print "Downloading %s for bill id %s" %('documents', bill['id'])
+            bill = self._download_bill_documents(bill)
+            if 'directives' in bill['sections_menu']:
+                print "Downloading %s for bill id %s" %('directives', bill['id'])
+                bill = self._download_bill_directives(bill)
+            if 'resolutions_and_messages' in bill['sections_menu']:
+                print "Downloading %s for bill id %s" %('resolutions and messages', bill['id'])
+                bill = self._download_bill_resolutions_and_messages(bill)
+            print '--------------------------------------------------------------'
+            return bill
+        except FileDownloadError, err:
+            #write to mongodb
+            traceback.print_exc()
+            error = {}
+            error['type'] = 'get_project_details'
+            error['object'] = 'bill'
+            error['id'] = project_id
+            error['msg'] = err.msg
+            self.mongo_client.save_error(error)            
 
     def _download_bill_directives(self, bill):
         menu_element = self.browser.find_element_by_link_text(
@@ -837,8 +832,16 @@ class SilpyNavigator(object):
                         bill['directives'][index]['files'].append({hashid: path})                 
                     except FileDownloadError, err:
                         #write to mongodb
-                        print err.msg
-                        self._log_error(err, bill['id'],'_download_bill_directives', index)            
+                        traceback.print_exc()
+                        error = {}
+                        error['type'] = 'file_download'
+                        error['object'] = 'bill'
+                        error['id'] = bill['id']
+                        error['msg'] = err.msg
+                        error['curl_command'] = err.curl_command
+                        error['downloader'] = '_download_bill_directives'
+                        error['row'] = index
+                        self.mongo_client.save_error(error)            
             index += 1
         return bill
     
@@ -864,9 +867,17 @@ class SilpyNavigator(object):
                                                                viewstate,
                                                                session_id)
                 except FileDownloadError, err:
-                    #write to mongodb
-                    print err.msg
-                    self._log_error(err, bill['id'], '_download_bill_resolutions_and_messages', index)
+                    traceback.print_exc()
+                    error = {}
+                    error['type'] = 'file_download'
+                    error['object'] = 'bill'
+                    error['id'] = bill['id']
+                    error['msg'] = err.msg
+                    error['curl_command'] = err.curl_command
+                    error['downloader'] = '_download_bill_resolutions_and_messages'
+                    error['row'] = index
+                    self.mongo_client.save_error(error)
+                    
             bill['resolutions_and_messages'][index] = obj
             index += 1
         return bill
@@ -882,26 +893,28 @@ class SilpyNavigator(object):
             self.browser.find_element_by_id(doc['button_id']).click()
             session_id = self.browser.get_cookie('JSESSIONID')['value']
             viewstate = self.parser.extract_viewstate(self.browser.page_source)
-            doc['path'] = utils.download_bill_document(doc['index'],
+            try:
+                doc['path'] = utils.download_bill_document(doc['index'],
                                                        doc['name'],
                                                        bill['id'],
                                                        viewstate,
                                                        session_id)
+            except FileDownloadError, err:
+                    traceback.print_exc()
+                    error = {}
+                    error['type'] = 'file_download'
+                    error['object'] = 'bill'
+                    error['id'] = bill['id']
+                    error['msg'] = err.msg
+                    error['curl_command'] = err.curl_command
+                    error['downloader'] = '_download_bill_resolutions_and_messages'
+                    error['row'] = index
+                    self.mongo_client.save_error(error)
+                    
             bill['documents'][doc_index] = doc
             doc_index += 1
         return bill
     
-    def get_projects_by_committee(self):
-        #TODO
-        # 1 - seleccionar del menu principal Proyectos por Comisión
-        # 2 - seleccionar camara (Diputados o Senadores)
-        # 3 - Click en boton de buscar.
-        # 4 - almacenar lista para iterar por cada item
-        # 5 - ir a VerProyectos y guardar referencia a 
-        # 6 - extraer proyectos
-        # 7 - empezar desde 1 utilizando la lista de (4)
-        pass
-            
     def list_projects_by_committee(self, js_call):
         #TODO:invoke js_call from data dictionary
         #should this  be called when browsing projects by period?
@@ -959,7 +972,7 @@ class SilpyScrapper(object):
             self.update_members_bills_from_db(origin)
         except Exception, err:
             #write to mongodb
-            print err
+            traceback.print_exc()
             #self._log_error(err, bill['id'],'_download_bill_directives', index)            
         
     def update_members_bills_from_db(self, origin):
@@ -974,39 +987,57 @@ class SilpyScrapper(object):
                 self._update_bills(m['projects'])
         except Exception, err:
             print "WARNING: Improve Exception handling."
-            print err
+            traceback.print_exc()
 
-    def download_all_bills(self):
+    def download_all_bills(self, new=False):
+        #if new = True download only projects
+        #not found in db.projects collection
         try:
             #download all bills from both chambers
             #TODO: new = True, download only new bills
-            all_projects = []
+            all_projects_ids = []
+            all_projects = {}
             db = self.mongo_client.db
             senadores = db.senadores.find()
             for s in senadores:
                 for p in s['projects']:
-                    all_projects.append(p['id'])
+                    all_projects[p['id']] = p
+                    all_projects_ids.append(p['id'])
             diputados = db.diputados.find()
             for d in diputados:
                 if 'projects' in d:
                     for p in d['projects']:
-                        all_projects.append(p['id'])
-            unique_ids = list(set(all_projects))
+                        all_projects[p['id']] = p
+                        all_projects_ids.append(p['id'])
+            unique_ids = list(set(all_projects_ids))
             #projects = db.projects.find({'id': {'$exists': True, '$in':unique_ids}})
-            #TODO: remove from the unique list projects that are in db.projects
-            # get all projects from members that are on the unique list
-            self._update_bills(list(projects))
+            if new:
+                #TODO: remove from the unique list projects that are in db.projects
+                # get all projects from members that are on the unique list
+                downloaded_projects = list(db.projects.find({},{'_id':0,'id': 1}))
+                print len(downloaded_projects)
+                print len(all_projects)
+                for dp in downloaded_projects:
+                    "Project with id %s already downloaded." %dp['id'] 
+                    del all_projects[dp['id']]
+                    
+            print 'Downloading %s and their related files.' %(len(all_projects))
+            self._update_bills(all_projects.values())
         except Exception, err:
             print "WARNING: Improve Exception handling."
-            print err
+            traceback.print_exc()
         
     def _update_bills(self, projects):
         index = 0
         while(index < len(projects)):
             project = projects[index]
-            print "id de proyecto " + project['id']
-            project.update(self.navigator.get_project_details(project['id']))
-            self.mongo_client.upsert_project(project)
+            if 'id' not in project:
+                print 'project id not found'
+                print project
+            else:
+                print "id de proyecto " + project['id']
+                project.update(self.navigator.get_project_details(project['id']))
+                self.mongo_client.upsert_project(project)
             index +=1
             
     def get_commiittees_by_period(self):

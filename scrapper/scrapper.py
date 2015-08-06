@@ -29,9 +29,9 @@ def all():
     diputados_scrapper = DiputadosScrapper()
     diputados_scrapper.get_members_data()
 
-@click.command(help='extrae solo los datos de los senadores')
+@click.command(help='Extrae solo los datos de los senadores.')
 def senadores():
-    print 'secrapping senadores'
+    print 'scrapping senadores'
     silpy_senadores = SilpyScrapper()
     silpy_senadores.get_members_data('S')
     silpy_senadores.close_navigator()
@@ -39,7 +39,7 @@ def senadores():
     senadores_scrapper.extract_senators_data()
     #senadores_scrapper.get_all_articles()
 
-@click.command(help="extrae solo los datos de los diputados")
+@click.command(help="Extrae solo los datos de los diputados.")
 def diputados():
     print 'scrapping diputados'
     silpy_diputados = SilpyScrapper()
@@ -48,19 +48,20 @@ def diputados():
     diputados_scrapper = DiputadosScrapper()
     diputados_scrapper.get_members_data()
 
-@click.command(help="Exporta los datos a popit")
+@click.command(help="Exporta los datos a popit.")
 def map_popit_data():
     print 'Exportando a popit'
     map_popit()
     
 @click.command(help="descarga los proyectos de leyes")
-@click.option('--origin', default='all', help="origen de datos, 'all' para todos," +
-              " 's' para senadores y 'd' para diputados")
-def bills(origin):
+@click.option('--origin', default='all', help="Origen de datos, 'all' para todos," +
+              " 's' para senadores y 'd' para diputados.")
+@click.option('--new', is_flag=True, help="Descarga solo nuevos projectos de ley. Disponible solo para 'all'.")
+def bills(origin, new=False):
     
     if origin == 'all':
         silpy_scrapper = SilpyScrapper()
-        silpy_scrapper.download_all_bills()
+        silpy_scrapper.download_all_bills(new)
     elif origin == 's':
         silpy_senadores = SilpyScrapper()
         silpy_senadores.update_members_bills_from_db('S')
