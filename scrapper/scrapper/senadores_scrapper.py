@@ -178,18 +178,21 @@ class SenadoresScrapper(object):
         return senadores
             
     def extract_senators_data(self):
-        senadores = self.obtener_lista_de_senadores()
-        for s in senadores:
-            id = s['id']
-            s = self.get_member_info(s)
-            #retrieve senator from db
-            #senator = self.mongo.get_senator(id)
-            #merge senator data from web and db
-            #senator.update(s)
-            #update senator to db
-            self.mongo.update_senador(s)
-            
-        self.browser.close()
+        try:
+            senadores = self.obtener_lista_de_senadores()
+            for s in senadores:
+                id = s['id']
+                s = self.get_member_info(s)
+                #retrieve senator from db
+                #senator = self.mongo.get_senator(id)
+                #merge senator data from web and db
+                #senator.update(s)
+                #update senator to db
+                self.mongo.update_senador(s)            
+            self.browser.close()
+        except Exception, err:
+            print "WARNING: Improve Exception handling."
+            print err
 
     def get_member_info(self, senator):
         id = senator['id']

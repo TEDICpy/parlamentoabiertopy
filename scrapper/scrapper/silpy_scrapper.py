@@ -932,58 +932,73 @@ class SilpyScrapper(object):
         self.navigator.close_driver()
 
     def get_members_data(self, origin):
-        print 'ready to extract data'
-        data = self.navigator.get_parlamentary_list(origin)
-        rows = self.parser.parse_parlamentary_data(data)#member list
+        try:
+            print 'ready to extract data'
+            data = self.navigator.get_parlamentary_list(origin)
+            rows = self.parser.parse_parlamentary_data(data)#member list
 
-        index = 0
-        while (index < len(rows)):
-            row = rows[index]
-            member_id = row['id']
-            print 'procesando datos de: %s con id %s ' %(row['name'], member_id)
-            html = self.navigator.get_member_projects(member_id)
-            row['projects'] = self.parser.parse_projects_by_parlamentary(html)
-            #download img
-            filename = 'download/img/'+ row['id'] + '.jpg'
-            urllib.urlretrieve(row['img'], filename)
-            index += 1
-        #save members collection here and then proceed to extract bills information
-        #from what is saved in the data base
-        if origin == 'S':
-            print "Guardando datos de Senadores"
-            self.mongo_client.update_senadores(rows)
-        elif origin == 'D':
-            print "Guardando datos de Diputados"
-            self.mongo_client.update_diputados(rows)
-        self.update_members_bills_from_db(origin)
+            index = 0
+            while (index < len(rows)):
+                row = rows[index]
+                member_id = row['id']
+                print 'procesando datos de: %s con id %s ' %(row['name'], member_id)
+                html = self.navigator.get_member_projects(member_id)
+                row['projects'] = self.parser.parse_projects_by_parlamentary(html)
+                #download img
+                filename = 'download/img/'+ row['id'] + '.jpg'
+                urllib.urlretrieve(row['img'], filename)
+                index += 1
+            #save members collection here and then proceed to extract bills information
+            #from what is saved in the data base
+            if origin == 'S':
+                print "Guardando datos de Senadores"
+                self.mongo_client.update_senadores(rows)
+            elif origin == 'D':
+                print "Guardando datos de Diputados"
+                self.mongo_client.update_diputados(rows)
+            self.update_members_bills_from_db(origin)
+        except Exception, err:
+            #write to mongodb
+            print err
+            #self._log_error(err, bill['id'],'_download_bill_directives', index)            
         
     def update_members_bills_from_db(self, origin):
         #looks form members on the db and downloads their bills
-        if origin == 'S':
-            members  = self.mongo_client.get_all_senators()
-        elif origin == 'D':
-            members  = self.mongo_client.get_all_deputies()        
-        for m in members: 
-            print "Extrayendo proyectos de %s " %(m['name'])
-            self._update_bills(m['projects'])
+        try:
+            if origin == 'S':
+                members  = self.mongo_client.get_all_senators()
+            elif origin == 'D':
+                members  = self.mongo_client.get_all_deputies()        
+            for m in members: 
+                print "Extrayendo proyectos de %s " %(m['name'])
+                self._update_bills(m['projects'])
+        except Exception, err:
+            print "WARNING: Improve Exception handling."
+            print err
 
     def download_all_bills(self):
-        #download all bills from both chambers
-        #TODO: new = True, download only new bills
-        all_projects = []
-        db = self.mongo_client.db
-        senadores = db.senadores.find()
-        for s in senadores:
-            for p in s['projects']:
-                all_projects.append(p['id'])
-        diputados = db.diputados.find()
-        for d in diputados:
-            if 'projects' in d:
-                for p in d['projects']:
+        try:
+            #download all bills from both chambers
+            #TODO: new = True, download only new bills
+            all_projects = []
+            db = self.mongo_client.db
+            senadores = db.senadores.find()
+            for s in senadores:
+                for p in s['projects']:
                     all_projects.append(p['id'])
-        unique_ids = list(set(all_projects))
-        projects = db.projects.find({'id': {'$exists': True, '$in':unique_ids}})
-        self._update_bills(list(projects))
+            diputados = db.diputados.find()
+            for d in diputados:
+                if 'projects' in d:
+                    for p in d['projects']:
+                        all_projects.append(p['id'])
+            unique_ids = list(set(all_projects))
+            #projects = db.projects.find({'id': {'$exists': True, '$in':unique_ids}})
+            #TODO: remove from the unique list projects that are in db.projects
+            # get all projects from members that are on the unique list
+            self._update_bills(list(projects))
+        except Exception, err:
+            print "WARNING: Improve Exception handling."
+            print err
         
     def _update_bills(self, projects):
         index = 0
