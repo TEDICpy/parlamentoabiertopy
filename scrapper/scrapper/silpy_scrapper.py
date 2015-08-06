@@ -810,19 +810,19 @@ class SilpyNavigator(object):
                 bill['directives'][index]['files'] = []
             download = True
             for button in directive['buttons']:
-                #unique hash to avoid downloading the same file more than once
-                idstr = bill['id'] + directive['date']+button['id']
-                hashid = hashlib.sha1(idstr.encode('utf-8')).hexdigest()
-                #if hashid is found on files we already have the file
-                if self.mongo_client.directive_exists(bill['id'], hashid):
-                    download = False
-                    print "File with hash %s already exists" %(hashid)
-                if download:
-                    self.browser.find_element_by_id(button['id']).click()
-                    time.sleep(1)
-                    session_id = self.browser.get_cookie('JSESSIONID')['value']
-                    viewstate = self.parser.extract_viewstate(self.browser.page_source)
-                    try:
+                try:
+                    #unique hash to avoid downloading the same file more than once
+                    idstr = bill['id'] + directive['date']+button['id']
+                    hashid = hashlib.sha1(idstr.encode('utf-8')).hexdigest()
+                    #if hashid is found on files we already have the file
+                    if self.mongo_client.directive_exists(bill['id'], hashid):
+                        download = False
+                        print "File with hash %s already exists" %(hashid)
+                    if download:
+                        self.browser.find_element_by_id(button['id']).click()
+                        time.sleep(1)
+                        session_id = self.browser.get_cookie('JSESSIONID')['value']
+                        viewstate = self.parser.extract_viewstate(self.browser.page_source)
                         path = utils.download_bill_directive(directive['index'],
                                                            button['index'],
                                                            bill['id'],
@@ -830,18 +830,18 @@ class SilpyNavigator(object):
                                                            session_id)
                     
                         bill['directives'][index]['files'].append({hashid: path})                 
-                    except FileDownloadError, err:
-                        #write to mongodb
-                        traceback.print_exc()
-                        error = {}
-                        error['type'] = 'file_download'
-                        error['object'] = 'bill'
-                        error['id'] = bill['id']
-                        error['msg'] = err.msg
-                        error['curl_command'] = err.curl_command
-                        error['downloader'] = '_download_bill_directives'
-                        error['row'] = index
-                        self.mongo_client.save_error(error)            
+                except FileDownloadError, err:
+                    #write to mongodb
+                    traceback.print_exc()
+                    error = {}
+                    error['type'] = 'file_download'
+                    error['object'] = 'bill'
+                    error['id'] = bill['id']
+                    error['msg'] = err.msg
+                    error['curl_command'] = err.curl_command
+                    error['downloader'] = '_download_bill_directives'
+                    error['row'] = index
+                    self.mongo_client.save_error(error)
             index += 1
         return bill
     
