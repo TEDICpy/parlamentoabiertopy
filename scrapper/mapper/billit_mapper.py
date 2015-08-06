@@ -1,4 +1,3 @@
-
 #-*- coding: utf-8 -*-
 '''
 
@@ -9,6 +8,8 @@ import json
 import uuid
 from datetime import datetime
 import pymongo
+from billit_model import Bill, Paperwork, Directive, Document
+
 host = 'http://localhost:8002'
 secret_token = '75cc973db60d3e07beaa1630c4cb37ded228e5bb71853be068a573b1a2ee385379111f9b12847b285a7e2c2b2f918b2902f4edb04046319cf41148a642fa53d3'
 
@@ -19,56 +20,16 @@ senadores = mdb.senadores
 headers = {"Content-Type": "application/json",
            "X-CSRF-Token": secret_token}
 
+projects = mdb.projects.find()#{"_id" : "55c214cbada5cdb309e4ac8c"})
 
-class Bill(object):
-    '''
-    class bassed on the model from
-    bill-it/app/models/bill.rb
-
-    '''
-    uid= "" #type: String
-    title= "" #, type: String
-    abstract= "" #, type: String
-    creation_date= "" #, type: Time
-    source= "" #, type: String
-    initial_chamber= "" #, type: String
-    stage= "" #, type: String
-    sub_stage= "" #, type: String
-    status= "" #, type: String
-    resulting_document= "" #, type: String
-    merged_bills= "" #, type: Array
-    subject_areas= "" #, type: Array
-    authors= "" #, type: Array
-    publish_date= "" #, type: Time
-    tags= "" #, type: Array
-    bill_draft_link= "" #, type: String
-    current_priority= "" #, type: String
+i = 0
 
 
-class Paperwork(object):
-
-  session = ''#, :type => String
-  date = ''#, :type => DateTime
-  description = ''#, :type => String
-  stage = ''#, :type => String
-  chamber = ''#, :type => String
-  bill_uid = ''#, :type => String
-  timeline_status = ''#, :type => String
-
-
-class Directive(object):
-    pass
-
-class Document(object):
-    pass
-
-
-projects = mdb.projects.find()
 for p in projects:
     print "loading bill with uuid= %s" %(p['id'])
     bill = Bill()
-    if 'id' in p:
-        bill.uid = p['id'] #use nro de expediente?
+    if 'file' in  p:
+        bill.uid = p['file'] #use nro de expediente?
     if 'title' in p:
         bill.title = p['title']
     if 'entry_date' in p:
@@ -139,9 +100,12 @@ for p in projects:
                 new_paperwork.stage = paperwork['stage']
             #new_paperwork.description = paperwork['']
             bill.paperworks.append(new_paperwork.__dict__)
-
+    #if 'estage' in p:
     #bill[''] = p['']
+    i = i + 1
     print json.dumps(bill.__dict__)
     r = requests.post(host + '/bills', data=json.dumps(bill.__dict__))
-    print "------------------------------------------------------------------------------"
+    print "------------------------------------------------------------------------------  " , i
     print r.content
+#    if i > 50:
+#        break
