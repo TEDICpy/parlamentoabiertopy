@@ -4,6 +4,7 @@
 #http://www.senado.gov.py
 #TODO:
 
+import traceback
 import httplib
 import json
 import urllib
@@ -192,7 +193,7 @@ class SenadoresScrapper(object):
             self.browser.close()
         except Exception, err:
             print "WARNING: Improve Exception handling."
-            print err
+            traceback.print_exc()
 
     def get_member_info(self, senator):
         id = senator['id']

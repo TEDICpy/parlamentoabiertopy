@@ -1,7 +1,7 @@
 #-*- coding: utf-8 -*-
+import traceback
 import requests
 from bs4 import BeautifulSoup
-
 from utils import utils
 from db.mongo_db import SilpyMongoClient
 
@@ -102,5 +102,5 @@ class DiputadosScrapper(object):
                 result = mongo_client.update_diputado(m)
         except Exception, err:
             print "Improve exception handling"
-            print err
+            traceback.print_exc()
 
