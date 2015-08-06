@@ -59,10 +59,8 @@ def map_popit_data():
 def bills(origin):
     
     if origin == 'all':
-        silpy_senadores = SilpyScrapper()
-        silpy_senadores.update_members_bills_from_db('S')
-        silpy_diputados = SilpyScrapper()
-        silpy_diputados.update_members_bills_from_db('D')
+        silpy_scrapper = SilpyScrapper()
+        silpy_scrapper.download_all_bills()
     elif origin == 's':
         silpy_senadores = SilpyScrapper()
         silpy_senadores.update_members_bills_from_db('S')

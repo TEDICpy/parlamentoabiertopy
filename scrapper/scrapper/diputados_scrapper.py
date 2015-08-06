@@ -90,15 +90,17 @@ class DiputadosScrapper(object):
                              'btnBuscar': (None, 'Buscar')})
 
     def get_members_data(self):
-        mongo_client = SilpyMongoClient()
-        members = self.get_member_list()
-        for m in members:
-            print "Procesando diputado " + m['name']
-            id = m['diputado_id']
-            m.update(self.get_member_details(id))
-            cv = self.get_member_cv(id)
-            m['cv'] = cv
-            result = mongo_client.update_diputado(m)
-            
-    
-#print ds.get_member_details(dict(diputado_id='271'))
+        try:
+            mongo_client = SilpyMongoClient()
+            members = self.get_member_list()
+            for m in members:
+                print "Procesando diputado " + m['name']
+                id = m['diputado_id']
+                m.update(self.get_member_details(id))
+                cv = self.get_member_cv(id)
+                m['cv'] = cv
+                result = mongo_client.update_diputado(m)
+        except Exception, err:
+            print "Improve exception handling"
+            print err
+

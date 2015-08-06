@@ -313,8 +313,29 @@ class SilpyHTMLParser(object):
         bill['directives'] = self._extract_project_directives(soup)
         #resoluciones y mensajes -> ?
         if 'resolutions_and_messages' in bill['sections_menu']:
-            bill['resolutions_and_messages'] = self._extract_projects_resolutions_and_messages(soup)            
+            bill['resolutions_and_messages'] = self._extract_projects_resolutions_and_messages(soup)
+        if 'laws_and_decrees' in bill['sections_menu']:
+            bill['laws_and_decrees'] = self._extract_laws_and_decrees(soup)
         return bill
+
+    def _extract_laws_and_decrees(self, soup):
+        main_tbody = soup.find(id='formMain:j_idt124:j_idt281_data')
+        #TODO: extract filename
+        print "######################"
+        print "WARNING: laws and decrees found"
+        print "######################"
+        result = []
+        tr_list = main_tbody.find_all('tr', recursive=False)
+        for tr in tr_list:
+            inner_tr_list = tr.tbody.find_all('tr', recursive=False)
+            info = {}
+            for itr in inner_tr_list:
+                if len(itr.text.strip()) > 1:
+                    k,v = itr.text.strip().split('\n')
+                    info[k] = v
+            info['button'] = tr.find('button')
+            result.append(info)
+        return result
 
     def _extract_projects_resolutions_and_messages(self, soup):
         resolutions_and_messages = []
@@ -509,7 +530,7 @@ class SilpyHTMLParser(object):
             elif u'Resoluciones y Mensajes'in text:
                 key = 'resolutions_and_messages'
             elif u'Leyes y Decretos'in text:
-                key = 'attachment' #?
+                key = 'laws_and_decrees' #?
             else:
                 key = text.strip()
             sections_menu[key] = {'text' : a.text.strip(), 'href': a['href']}                
@@ -571,7 +592,7 @@ class SilpyNavigator(object):
 
     def __init__(self, browser=None, navigate=True):
         self.parser = SilpyHTMLParser()
-        self.mongo_client = SilpyMongoClient()
+        self.mongo_client = SilpyMongoClient()#TODO: use only one instance
         if not navigate:
             print 'WARNING: not using webdriver, for development purposses only'
             return
@@ -790,24 +811,34 @@ class SilpyNavigator(object):
         while (index < len(bill['directives'])):
             directive = bill['directives'][index]
             print "downloading directive index: %s" %(directive['index'])
-            files = []
+            if 'files' not in bill['directives'][index]:                 
+                bill['directives'][index]['files'] = []
+            download = True
             for button in directive['buttons']:
-                self.browser.find_element_by_id(button['id']).click()
-                time.sleep(1)
-                session_id = self.browser.get_cookie('JSESSIONID')['value']
-                viewstate = self.parser.extract_viewstate(self.browser.page_source)
-                try:
-                    files.append(utils.download_bill_directive(directive['index'],
+                #unique hash to avoid downloading the same file more than once
+                idstr = bill['id'] + directive['date']+button['id']
+                hashid = hashlib.sha1(idstr.encode('utf-8')).hexdigest()
+                #if hashid is found on files we already have the file
+                if self.mongo_client.directive_exists(bill['id'], hashid):
+                    download = False
+                    print "File with hash %s already exists" %(hashid)
+                if download:
+                    self.browser.find_element_by_id(button['id']).click()
+                    time.sleep(1)
+                    session_id = self.browser.get_cookie('JSESSIONID')['value']
+                    viewstate = self.parser.extract_viewstate(self.browser.page_source)
+                    try:
+                        path = utils.download_bill_directive(directive['index'],
                                                            button['index'],
                                                            bill['id'],
                                                            viewstate,
-                                                           session_id))
-                except FileDownloadError, err:
-                    #write to mongodb
-                    print err.msg
-                    self._log_error(err, bill['id'],'_download_bill_directives', index)
+                                                           session_id)
                     
-            bill['directives'][index]['files'] = files
+                        bill['directives'][index]['files'].append({hashid: path})                 
+                    except FileDownloadError, err:
+                        #write to mongodb
+                        print err.msg
+                        self._log_error(err, bill['id'],'_download_bill_directives', index)            
             index += 1
         return bill
     
@@ -901,55 +932,82 @@ class SilpyScrapper(object):
         self.navigator.close_driver()
 
     def get_members_data(self, origin):
-        print 'ready to extract data'
-        data = self.navigator.get_parlamentary_list(origin)
-        rows = self.parser.parse_parlamentary_data(data)#member list
+        try:
+            print 'ready to extract data'
+            data = self.navigator.get_parlamentary_list(origin)
+            rows = self.parser.parse_parlamentary_data(data)#member list
 
-        index = 0
-        while (index < len(rows)):
-            row = rows[index]
-            member_id = row['id']
-            print 'procesando datos de: %s con id %s ' %(row['name'], member_id)
-            html = self.navigator.get_member_projects(member_id)
-            row['projects'] = self.parser.parse_projects_by_parlamentary(html)
-            #download img
-            filename = 'download/img/'+ row['id'] + '.jpg'
-            urllib.urlretrieve(row['img'], filename)
-            index += 1
-        #TODO:
-        #save members collection here and then proceed to extract bills information
-        #from what is saved in the data base
-        if origin == 'S':
-            print "Guardando datos de Senadores"
-            self.mongo_client.update_senadores(rows)
-        elif origin == 'D':
-            print "Guardando datos de Diputados"
-            self.mongo_client.update_diputados(rows)
-        self.update_members_bills_from_db(origin)
+            index = 0
+            while (index < len(rows)):
+                row = rows[index]
+                member_id = row['id']
+                print 'procesando datos de: %s con id %s ' %(row['name'], member_id)
+                html = self.navigator.get_member_projects(member_id)
+                row['projects'] = self.parser.parse_projects_by_parlamentary(html)
+                #download img
+                filename = 'download/img/'+ row['id'] + '.jpg'
+                urllib.urlretrieve(row['img'], filename)
+                index += 1
+            #save members collection here and then proceed to extract bills information
+            #from what is saved in the data base
+            if origin == 'S':
+                print "Guardando datos de Senadores"
+                self.mongo_client.update_senadores(rows)
+            elif origin == 'D':
+                print "Guardando datos de Diputados"
+                self.mongo_client.update_diputados(rows)
+            self.update_members_bills_from_db(origin)
+        except Exception, err:
+            #write to mongodb
+            print err
+            #self._log_error(err, bill['id'],'_download_bill_directives', index)            
         
     def update_members_bills_from_db(self, origin):
         #looks form members on the db and downloads their bills
-        if origin == 'S':
-            members  = self.mongo_client.get_all_senators()
-        elif origin == 'D':
-            members  = self.mongo_client.get_all_deputies()
-        for m in members: 
-            print "Extrayendo proyectos de %s " %(m['name'])
-            projects = m['projects']                 
-            index = 0
-            while(index < len(projects)):
-                project = projects[index]
-                print "id de proyecto " + project['id']
-                project.update(self.navigator.get_project_details(project['id']))
-                self.mongo_client.upsert_project(project)
-                index +=1
-            #     m['projects'][index] = project
-            # if origin == 'S':
-            #     print "Guardando datos de Senadores"
-            #     self.mongo_client.update_senador(m)
-            # elif origin == 'D':
-            #     print "Guardando datos de Diputados"
-            #     self.mongo_client.update_diputados(m)            
+        try:
+            if origin == 'S':
+                members  = self.mongo_client.get_all_senators()
+            elif origin == 'D':
+                members  = self.mongo_client.get_all_deputies()        
+            for m in members: 
+                print "Extrayendo proyectos de %s " %(m['name'])
+                self._update_bills(m['projects'])
+        except Exception, err:
+            print "WARNING: Improve Exception handling."
+            print err
+
+    def download_all_bills(self):
+        try:
+            #download all bills from both chambers
+            #TODO: new = True, download only new bills
+            all_projects = []
+            db = self.mongo_client.db
+            senadores = db.senadores.find()
+            for s in senadores:
+                for p in s['projects']:
+                    all_projects.append(p['id'])
+            diputados = db.diputados.find()
+            for d in diputados:
+                if 'projects' in d:
+                    for p in d['projects']:
+                        all_projects.append(p['id'])
+            unique_ids = list(set(all_projects))
+            #projects = db.projects.find({'id': {'$exists': True, '$in':unique_ids}})
+            #TODO: remove from the unique list projects that are in db.projects
+            # get all projects from members that are on the unique list
+            self._update_bills(list(projects))
+        except Exception, err:
+            print "WARNING: Improve Exception handling."
+            print err
+        
+    def _update_bills(self, projects):
+        index = 0
+        while(index < len(projects)):
+            project = projects[index]
+            print "id de proyecto " + project['id']
+            project.update(self.navigator.get_project_details(project['id']))
+            self.mongo_client.upsert_project(project)
+            index +=1
             
     def get_commiittees_by_period(self):
          periodo = '2014-2015'

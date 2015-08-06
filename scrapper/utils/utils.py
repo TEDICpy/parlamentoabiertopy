@@ -30,7 +30,7 @@ class FileDownloadError(Exception):
           self.curl_command = curl_command
           self.data = data
           self.filename = filename
-     
+
 
 def get_new_browser():
 #     browser = webdriver.Firefox()
@@ -83,6 +83,9 @@ def curl_command(session_id, url, data, filename, dir):
 
           filename = filename.replace(' ','_')
           out = dir+filename
+          if(os.path.exists(out)):
+               print "the file %s already exists" %(out)
+               return 
           command = u'curl ' + url \
           +' -H "Host: sil2py.senado.gov.py"'\
           +' -H "User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:33.0) Gecko/20100101 Firefox/33.0"'\
