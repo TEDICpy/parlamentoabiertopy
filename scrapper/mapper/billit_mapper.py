@@ -20,72 +20,56 @@ senadores = mdb.senadores
 headers = {"Content-Type": "application/json",
            "X-CSRF-Token": secret_token}
 
-projects = mdb.projects.find()#{"_id" : "55c214cbada5cdb309e4ac8c"})
+projects = mdb.projects.find()
 
 i = 0
 
+def get_chamber(chamber):
+    if chamber == "CAMARA DE DIPUTADOS":
+        return "C. Diputados"
+    if chamber == "CAMARA DE SENADORES":
+        return "Senado"
+    return chamber
 
 for p in projects:
     print "loading bill with uuid= %s" %(p['id'])
     bill = Bill()
     if 'file' in  p:
         bill.uid = p['file'] #use nro de expediente?
+    #if 'id' in  p:
+    #    bill.id = p['id'] #use nro de expediente?
     if 'title' in p:
         bill.title = p['title']
-    if 'id' in p:
-        bill.title = p['id']
     if 'entry_date' in p:
         bill.creation_date = p['entry_date']
     if 'info' in p:
-        if 'subject' in p['info']:
-            bill.title = p['info']['subject']
-        if 'heading' in p['info']:
-            bill.abstract = p['info']['heading']
-        if 'stage' in p['info']:
-            bill.stage = p['stage']['stage']
-        if 'sub_stage' in p['info']:
-            bill.substage = p['stage']['sub_stage']
-        if 'status' in p['info']:
-            bill.status = p['stage']['status']
-        if 'importance' in p['info']:
-            bill.current_priority = p['info']['importance']
-        if 'origin' in p['info']:
-            bill.source = p['info']['origin']
+        info = p['info']
+        if 'origin' in info:
+            bill.source = get_chamber(info['origin'])
+            bill.initial_chamber = bill.source
+        #if 'subject' in p['info']:
+        #    bill.title = p['info']['subject']
+        if 'heading' in info:
+            bill.abstract = info['heading']
+        if 'importance'in info:
+            if info['importance'] == "SIN URGENCIA":
+                bill.urgent = 'Simple'
+            else:
+                bill.urgent = info['importance']
+    if 'stage' in p:
+        stage = p['stage']
+        if 'stage' in stage:
+            bill.stage = stage['stage']
+        if 'sub_stage' in stage:
+            bill.sub_stage = stage['sub_stage']
+        if 'status' in stage:
+            bill.status = stage['status']
 
-    #documents
-    bill.documents = []
-    if 'documents' in p:
-        for doc in p['documents']:
-            document = Document()
-            if 'registration_date' in doc:
-                document.date = doc['registration_date']#, :type => DateTime
-            if 'type' in doc:
-                document.type = doc['type']#, :type => String
-            # document.number#, :type => String
-            # document.step = doc['']#, :type => String
-            # document.stage = doc['']#, :type => String
-            # document.chamber = doc['']#, :type => String
-            # document.link = doc['']#, :type => String
-            bill.documents.append(document.__dict__)
- 
-    #Directives
-    bill.directives = []
-    if 'directives' in p:
-        if p['directives']:
-            for d in p['directives']:
-                directive = Directive()
-                directive.date = d['date']#, :type => DateTime
-                directive.step = d['result'] #, :type => String
-                #directive.stage #, :type => String ?
-                #directive.link #, :type => String ?
-                bill.directives.append(directive.__dict__)
-
-    #TODO: how do we relate it with popit?
+    #TODO: how do we relate it with popit? id? link?
     bill.authors = []
     if 'authors' in p:
         for author in p['authors']:
             bill.authors.append(author['name'])
-
     #paperworks
     bill.paperworks = []
     if 'paperworks' in p:
@@ -97,17 +81,109 @@ for p in projects:
             if 'date' in paperwork:
                 new_paperwork.date = paperwork['date']
             if 'chamber' in paperwork:
-                new_paperwork.chamber = paperwork['chamber']
+                new_paperwork.chamber = get_chamber(paperwork['chamber'])
             if 'stage' in paperwork:
                 new_paperwork.stage = paperwork['stage']
-            #new_paperwork.description = paperwork['']
+            if 'result' in paperwork:
+                if 'value'in paperwork['result']:
+                    new_paperwork.timeline_status = paperwork['result']['value']
             bill.paperworks.append(new_paperwork.__dict__)
-    #if 'estage' in p:
-    #bill[''] = p['']
+    #documents
+    bill.documents = []
+    if 'documents' in p:
+        for doc in p['documents']:
+            document = Document()
+            if 'registration_date' in doc:
+                document.date = doc['registration_date']#, :type => DateTime
+            if 'type' in doc:
+                document.type = doc['type']#, :type => String
+            #TODO: generar link a documento
+            # document.number#, :type => String
+            # document.step = doc['']#, :type => String
+            # document.stage = doc['']#, :type => String
+            # document.chamber = doc['']#, :type => String
+            # document.link = doc['']#, :type => String
+            bill.documents.append(document.__dict__)
+
+    #Directives
+    bill.directives = []
+    if 'directives' in p:
+        if p['directives']:
+            for d in p['directives']:
+                directive = Directive()
+                if 'date' in d:
+                    directive.date = d['date']#, :type => DateTime
+                if 'result' in d:
+                    directive.step = d['result'] #, :type => String
+                #directive.stage #, :type => String ?
+                #directive.link #, :type => String ?
+                bill.directives.append(directive.__dict__)
+
     i = i + 1
     print json.dumps(bill.__dict__)
     r = requests.post(host + '/bills', data=json.dumps(bill.__dict__))
     print "------------------------------------------------------------------------------  " , i
     print r.content
-#    if i > 50:
-#        break
+
+
+# bill = {
+#     'uid': 'D-1327888',#file
+#     'id': '101491', #id
+#     'title' : 'PROYECTO DE LEY: QUE CONCEDE PENSION GRACIABLE A LA SEÑORA \
+#     MAFALDA MUÑOZ LUGO', #title
+#     'abstract' : 'PROYECTO DE LEY: QUE CONCEDE PENSION GRACIABLE A LA SEÑORA\
+#     MAFALDA MUÑOZ LUGO', #info->heading
+#     'creation_date': '16/09/2013',#entry_date
+#     'source': 'C. Diputados',#info->origin (conversion)
+#     'initial_chamber': 'C. Diputados',# copiado de origin
+#     'stage': 'Resolucion de archivo', #stage->stage
+#     'sub_stage': 'Tercer trámite constitucional',#stage->sub_stage
+#     'status' : 'ARCHIVADO',#stage->status
+#     'resulting_document': '',
+#
+#     'merged_bills': [], #not found
+#     'subject_areas': [],#not found
+#     'authors': [#authors
+#         {"id" : "100162", "name" : "Acosta Alcaraz, Edgar"},
+#         {"id" : "100138", "name" : "Cabral González, Elio"}
+#     ],
+#     'publish_date' :'',#not found
+#     'tags': [],#not found
+#     'bill_draft_link': '',#not found
+#     'current_priority': '',#not found
+#     'urgent': 'Simple',#info->importance, one of: ["Discusión inmediata", "Suma", "Simple"]
+#
+#     'paperworks': [{#paperworks
+#         'session' : 'ORDINARIA Nro. 74', #paperworks->session
+#         'date': '08/10/2014', #paperworks->date
+#         'description': '',#not found
+#         'stage': 'Primer trámite constitucional Entrada de expediente',#paperworks->stage
+#         'chamber': 'C. Diputados',#paperworks->chamber
+#         'bill_uid': '',#parent bill... leave it to billit
+#         'timeline_status': 'PASA A COMISIÓN',#paperworks->result->value
+#     }],
+#     'priorities': [],#not found
+#     'reports': [],#not found
+#     'documents': [#documents
+#         {
+#          'number': '0',#index
+#          'date': '16/10/2014',#  registration_date
+#          'step': '', #not found
+#          'stage' '', #not found
+#          'type': 'PROYECTO', #type
+#          'chamber': '',#not found
+#          'link': '' #name... generar url
+#         }
+#     ],
+#     'directives': [#directives
+#         {
+#         'date':'',#date
+#         'step': '',#result?
+#         'stage': '',#nada
+#         'link': ''#
+#         }
+#     ],#not found
+#     'remarks': [],#not found
+#     'motions': [],#not found
+#     'revisions': []#not found
+# }
