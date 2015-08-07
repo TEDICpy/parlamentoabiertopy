@@ -201,7 +201,7 @@ class SilpyHTMLParser(object):
                     td1_span_list = td1.find_all('span')
                     #print "td1_span_list " + str(td1_span_list)
                     if len(td1_span_list) > 1:
-                        project['estage'] = {'chamber': td1_span_list[0].text, 
+                        project['stage'] = {'chamber': td1_span_list[0].text, 
                                              td1_span_list[1].text : td1_span_list[2].text}
                 if len(project) != 0:        
                     projects.append(project)
@@ -332,8 +332,9 @@ class SilpyHTMLParser(object):
             info = {}
             for itr in inner_tr_list:
                 if len(itr.text.strip()) > 1:
-                    k,v = itr.text.strip().split('\n')
-                    info[k] = v
+                    info['texts'] = itr.text.strip().split('\n')
+                    #k,v= itr.text.strip().split('\n') #more than one value to unpack
+                    #info[k] = v
             info['button_id'] = tr.find('button')['id']
             result.append(info)
         return result
@@ -638,53 +639,70 @@ class SilpyNavigator(object):
     def get_parlamentary_list(self, origin):
         """returns the list of parlamentraries for the period 2008-2013
            @origin: S=senadores, D=diputados """
-        #TODO: makte option selection with parameters
-        #for origin and period
-        self._call_menu_item(u'Parlamentarios por Período')#from side menu
-        #formPreference:j_id16
-        utils.make_webdriver_wait(By.ID, "formMain:cmdBuscarParlamentario", self.browser)
-
-        utils.make_webdriver_wait(By.ID, 
-                                  "formMain:idPeriodoLegislativo_input",
-                                  self.browser)
-        select_camara_element = self.browser.find_element_by_id("formMain:idOrigen_input")
-        select_camara = Select(select_camara_element)
-        select_camara.select_by_value(origin)
-        select_periodo = self.browser.find_element_by_id("formMain:idPeriodoLegislativo_input")
-        select = Select(select_periodo)
-        select.select_by_index(4)
-        self.browser.execute_script("PrimeFaces.ab({source:'formMain:cmdBuscarParlamentario'" +\
-                                    ",update:'formMain'});return false;")        
-        # wait for th class? Yes
-        #WARNING: this is a bug
-        # the css class .ui-widget-content.ui-datatable-even can be even or odd depending on the number of rows
-        #use 'data-ri' instead of css ?
-        utils.make_webdriver_wait(By.CSS_SELECTOR, 
-                                  '.ui-widget-content.ui-datatable-even',
-                                  self.browser)#".ui-datatable-header.ui-widget-header")
-        number_of_rows = self.parser.number_of_rows_found(self.browser.page_source) #extraemos la cantidad de registros encontrados
-        #esperamos por la aparicion del ultimo registro en base a su css
-        last_row_id = "formMain:dataTable:%s:j_idt90" %(str(number_of_rows - 1))
-        utils.make_webdriver_wait(By.ID, last_row_id, self.browser)
-        return self.browser.page_source 
+        try:
+            #TODO: makte option selection with parameters
+            #for origin and period
+            self._call_menu_item(u'Parlamentarios por Período')#from side menu
+            #formPreference:j_id16
+            utils.make_webdriver_wait(By.ID, "formMain:cmdBuscarParlamentario", self.browser)
+            utils.make_webdriver_wait(By.ID, 
+                                      "formMain:idPeriodoLegislativo_input",
+                                      self.browser)
+            select_camara_element = self.browser.find_element_by_id("formMain:idOrigen_input")
+            select_camara = Select(select_camara_element)
+            select_camara.select_by_value(origin)
+            select_periodo = self.browser.find_element_by_id("formMain:idPeriodoLegislativo_input")
+            select = Select(select_periodo)
+            select.select_by_index(4)
+            self.browser.execute_script("PrimeFaces.ab({source:'formMain:cmdBuscarParlamentario'" +\
+                                        ",update:'formMain'});return false;")        
+            # wait for th class? Yes
+            #WARNING: this is a bug
+            # the css class .ui-widget-content.ui-datatable-even can be even or odd depending on the number of rows
+            #use 'data-ri' instead of css ?
+            utils.make_webdriver_wait(By.CSS_SELECTOR, 
+                                      '.ui-widget-content.ui-datatable-even',
+                                      self.browser)#".ui-datatable-header.ui-widget-header")
+            number_of_rows = self.parser.number_of_rows_found(self.browser.page_source) #extraemos la cantidad de registros encontrados
+            #esperamos por la aparicion del ultimo registro en base a su css
+            last_row_id = "formMain:dataTable:%s:j_idt90" %(str(number_of_rows - 1))
+            utils.make_webdriver_wait(By.ID, last_row_id, self.browser)
+            return self.browser.page_source
+        except Exception, err:
+            #write to mongodb
+            traceback.print_exc()
+            error = {}
+            error['method'] = 'buscar_comisiones_por_periodo'
+            error['msg'] = err.message
+            self.mongo_client.save_error(error)                    
 
     def get_member_projects(self, member_id):
-        url='http://sil2py.senado.gov.py/formulario/verProyectosParlamentario.pmf'\
-          +'?q=verProyectosParlamentario%2F' + member_id
-        self.browser.get(url)
-        time.sleep(2)
-        utils.wait_for_document_ready(self.browser)
-        html = self.browser.page_source
-        s = BeautifulSoup(html)
-        if s.getText().find('UPS...') != -1:
-            #load main page and needed cookes with it
-            print 'La sesión de la consulta ha expirado!'
-            self.browser.get('http://sil2py.senado.gov.py/main.pmf')
+        try:
+            url='http://sil2py.senado.gov.py/formulario/verProyectosParlamentario.pmf'\
+                +'?q=verProyectosParlamentario%2F' + member_id
             self.browser.get(url)
-            #self.wait_for_document_ready(
+            time.sleep(2)
             utils.wait_for_document_ready(self.browser)
             html = self.browser.page_source
-        return html
+            s = BeautifulSoup(html)
+            if s.getText().find('UPS...') != -1:
+                #load main page and needed cookes with it
+                print 'La sesión de la consulta ha expirado!'
+                self.browser.get('http://sil2py.senado.gov.py/main.pmf')
+                self.browser.get(url)
+                #self.wait_for_document_ready(
+                utils.wait_for_document_ready(self.browser)
+                html = self.browser.page_source
+            return html
+        except Exception, err:
+            #write to mongodb
+            traceback.print_exc()
+            error = {}
+            error['method'] = 'get_member_projects'
+            error['object'] = 'member'
+            error['id'] =  member_id
+            error['msg'] = err.message
+            self.mongo_client.save_error(error)                    
 
     def buscar_comisiones_por_periodo(self, period):
         #este item prrobablemente deberia ser todo un ciclo de navegacion
@@ -696,58 +714,74 @@ class SilpyNavigator(object):
         # 6- Invocar a [Integrantes]
         # 7- Parser: Extraer datos del resultado de (6)
         # 8- Cerrar pop up (7) y repetir desde 6 con el siguiente item
-        self._call_menu_item(u'Comisiones por Período')
-        utils.make_webdriver_wait(By.ID, 
-                                  "formMain:idPeriodoParlamentario_input",
-                                  self.browser)
-        select_camara_element = self.browser.find_element_by_id("formMain:idOrigen_input")
-        select_camara = Select(select_camara_element)
-        select_camara.select_by_index(1)#TODO: recibir el origen como parametro
-
-        select_periodo_element = self.browser.find_element_by_id("formMain:idPeriodoParlamentario_input")
-        select_periodo = Select(select_periodo_element)
-        select_periodo.select_by_index(1)#TODO: recibir el periodo como parametro
-        #se ejecuta la busqueda
-        self.browser.execute_script("PrimeFaces.ab({source:'formMain:cmdBuscar',update:'formMain'});return false;")
-        #esperar por el resultado
-        rows_found = self.count_table_rows()
-        waited_element = "formMain:dataTable:%s:j_idt101" % (rows_found)
-        utils.make_webdriver_wait(By.ID, waited_element)
-        #parseo de resultado
-        comisiones = self.parser.extraer_comisiones_por_periodo(self.browser.page_source)
-        #invocar a integrantes_js_call
-        for c in comisiones:
-            self.browser.execute_script(c['integrantes_js_call'])
-            time.sleep(2)
-            miembros = self.parser.extraer_miembros_por_comision(self.browser.page_source)
-            c['members'] = miembros
-            
-        return comisiones
+        try:
+            self._call_menu_item(u'Comisiones por Período')
+            utils.make_webdriver_wait(By.ID, 
+                                      "formMain:idPeriodoParlamentario_input",
+                                      self.browser)
+            select_camara_element = self.browser.find_element_by_id("formMain:idOrigen_input")
+            select_camara = Select(select_camara_element)
+            select_camara.select_by_index(1)#TODO: recibir el origen como parametro
+            select_periodo_element = self.browser.find_element_by_id("formMain:idPeriodoParlamentario_input")
+            select_periodo = Select(select_periodo_element)
+            select_periodo.select_by_index(1)#TODO: recibir el periodo como parametro
+            #se ejecuta la busqueda
+            self.browser.execute_script("PrimeFaces.ab({source:'formMain:cmdBuscar',update:'formMain'});return false;")
+            #esperar por el resultado
+            rows_found = self.count_table_rows()
+            waited_element = "formMain:dataTable:%s:j_idt101" % (rows_found)
+            utils.make_webdriver_wait(By.ID, waited_element)
+            #parseo de resultado
+            comisiones = self.parser.extraer_comisiones_por_periodo(self.browser.page_source)
+            #invocar a integrantes_js_call
+            for c in comisiones:
+                self.browser.execute_script(c['integrantes_js_call'])
+                time.sleep(2)
+                miembros = self.parser.extraer_miembros_por_comision(self.browser.page_source)
+                c['members'] = miembros
+            return comisiones
+        except Exception, err:
+            #write to mongodb
+            traceback.print_exc()
+            error = {}
+            error['method'] = 'buscar_comisiones_por_periodo'
+            error['object'] = 'bill'
+            error['msg'] = err.message
+            self.mongo_client.save_error(error)                    
 
     #period = 2014-2013
     #origin = D(diputados), S(senadores)
     def list_sessions_by_period(self, origin, period):
-        self._call_menu_item(u'Sesiones por Período')
-        #self.wait_for_document_ready(
-        utils.wait_for_document_ready(self.browser)
-        utils.make_webdriver_wait(By.ID, "formMain:idOrigen_input", self.browser)
-        select_camara_element = self.browser.find_element_by_id("formMain:idOrigen_input")
-        select_camara = Select(select_camara_element)
-        select_camara.select_by_value(origin)
+        try:
+            self._call_menu_item(u'Sesiones por Período')
+            #self.wait_for_document_ready(
+            utils.wait_for_document_ready(self.browser)
+            utils.make_webdriver_wait(By.ID, "formMain:idOrigen_input", self.browser)
+            select_camara_element = self.browser.find_element_by_id("formMain:idOrigen_input")
+            select_camara = Select(select_camara_element)
+            select_camara.select_by_value(origin)
+            select_periodo_element = self.browser.find_element_by_id("formMain:idPeriodoParlamentario_input")
+            select_periodo = Select(select_periodo_element)
+            select_periodo.select_by_visible_text(period)
+            self.browser.execute_script("PrimeFaces.ab({source:'formMain:cmdBuscar'" +\
+                                        ",update:'formMain'});return false;")
+            #self.wait_for_document_ready(
+            utils.wait_for_document_ready(self.browser)
+            number_of_rows = self.count_table_rows()
+            #we wait for the button in the lat row 
+            #Ex: formMain:dataTable:53:toggle
+            last_row_id = "formMain:dataTable:%s:toggle" %(str(number_of_rows - 1))
+            utils.make_webdriver_wait(By.ID, last_row_id, self.browser)
+            return self.browser.page_source
+        except Exception, err:
+            #write to mongodb
+            traceback.print_exc()
+            error = {}
+            error['method'] = 'list_sessions_by_period'
+            error['object'] = 'bill'
+            error['msg'] = err.message
+            self.mongo_client.save_error(error)                    
 
-        select_periodo_element = self.browser.find_element_by_id("formMain:idPeriodoParlamentario_input")
-        select_periodo = Select(select_periodo_element)
-        select_periodo.select_by_visible_text(period)
-        self.browser.execute_script("PrimeFaces.ab({source:'formMain:cmdBuscar'" +\
-                                    ",update:'formMain'});return false;")
-        #self.wait_for_document_ready(
-        utils.wait_for_document_ready(self.browser)
-        number_of_rows = self.count_table_rows()
-        #we wait for the button in the lat row 
-        #Ex: formMain:dataTable:53:toggle
-        last_row_id = "formMain:dataTable:%s:toggle" %(str(number_of_rows - 1))
-        utils.make_webdriver_wait(By.ID, last_row_id, self.browser)
-        return self.browser.page_source 
     
     def download_attachment(self, origin, button_id, filename):
         #download attachments:
@@ -786,14 +820,14 @@ class SilpyNavigator(object):
                 bill = self._download_bill_resolutions_and_messages(bill)
             print '--------------------------------------------------------------'
             return bill
-        except FileDownloadError, err:
+        except Exception, err:
             #write to mongodb
             traceback.print_exc()
             error = {}
             error['type'] = 'get_project_details'
             error['object'] = 'bill'
             error['id'] = project_id
-            error['msg'] = err.msg
+            error['msg'] = err.message
             self.mongo_client.save_error(error)            
 
     def _download_bill_directives(self, bill):
@@ -842,6 +876,15 @@ class SilpyNavigator(object):
                     error['downloader'] = '_download_bill_directives'
                     error['row'] = index
                     self.mongo_client.save_error(error)
+                except Exception, err:
+                    #write to mongodb
+                    traceback.print_exc()
+                    error = {}
+                    error['method'] = '_download_bill_directives'
+                    error['object'] = 'bill'
+                    error['id'] = project_id
+                    error['msg'] = err.message
+                    self.mongo_client.save_error(error)                    
             index += 1
         return bill
     
@@ -855,11 +898,11 @@ class SilpyNavigator(object):
         while (index < len(bill['resolutions_and_messages'])):
             obj = bill['resolutions_and_messages'][index]
             for button in obj['buttons']:
-                self.browser.find_element_by_id(button['id']).click()
-                time.sleep(1)
-                session_id = self.browser.get_cookie('JSESSIONID')['value']
-                viewstate = self.parser.extract_viewstate(self.browser.page_source)
                 try:
+                    self.browser.find_element_by_id(button['id']).click()
+                    time.sleep(1)
+                    session_id = self.browser.get_cookie('JSESSIONID')['value']
+                    viewstate = self.parser.extract_viewstate(self.browser.page_source)
                     button['path'] = utils.download_bill_resolutions_and_messages(index,
                                                                button['index'],
                                                                button['name'],
@@ -877,7 +920,15 @@ class SilpyNavigator(object):
                     error['downloader'] = '_download_bill_resolutions_and_messages'
                     error['row'] = index
                     self.mongo_client.save_error(error)
-                    
+                except Exception, err:
+                    #write to mongodb
+                    traceback.print_exc()
+                    error = {}
+                    error['method'] = '_download_bill_resolutions_and_messages'
+                    error['object'] = 'bill'
+                    error['id'] = project_id
+                    error['msg'] = err.message
+                    self.mongo_client.save_error(error)                    
             bill['resolutions_and_messages'][index] = obj
             index += 1
         return bill
@@ -889,11 +940,11 @@ class SilpyNavigator(object):
         time.sleep(2)
         doc_index = 0
         while (doc_index < len(bill['documents'])):
-            doc = bill['documents'][doc_index]
-            self.browser.find_element_by_id(doc['button_id']).click()
-            session_id = self.browser.get_cookie('JSESSIONID')['value']
-            viewstate = self.parser.extract_viewstate(self.browser.page_source)
             try:
+                doc = bill['documents'][doc_index]
+                self.browser.find_element_by_id(doc['button_id']).click()
+                session_id = self.browser.get_cookie('JSESSIONID')['value']
+                viewstate = self.parser.extract_viewstate(self.browser.page_source)
                 doc['path'] = utils.download_bill_document(doc['index'],
                                                        doc['name'],
                                                        bill['id'],
@@ -908,9 +959,17 @@ class SilpyNavigator(object):
                     error['msg'] = err.msg
                     error['curl_command'] = err.curl_command
                     error['downloader'] = '_download_bill_resolutions_and_messages'
-                    error['row'] = index
+                    error['row'] = doc_index
                     self.mongo_client.save_error(error)
-                    
+            except Exception, err:
+                    #write to mongodb
+                    traceback.print_exc()
+                    error = {}
+                    error['type'] = 'get_project_details'
+                    error['object'] = 'bill'
+                    error['id'] = project_id
+                    error['msg'] = err.message
+                    self.mongo_client.save_error(error)
             bill['documents'][doc_index] = doc
             doc_index += 1
         return bill
@@ -973,6 +1032,14 @@ class SilpyScrapper(object):
         except Exception, err:
             #write to mongodb
             traceback.print_exc()
+            error = {}
+            error['method'] = 'get_members_data'
+            error['object'] = 'bill'
+            error['id'] = project['id']
+            error['msg'] = err.message
+            self.mongo_client.save_error(error)
+            #write to mongodb
+            traceback.print_exc()
             #self._log_error(err, bill['id'],'_download_bill_directives', index)            
         
     def update_members_bills_from_db(self, origin):
@@ -987,7 +1054,14 @@ class SilpyScrapper(object):
                 self._update_bills(m['projects'])
         except Exception, err:
             print "WARNING: Improve Exception handling."
+            #write to mongodb
             traceback.print_exc()
+            error = {}
+            error['method'] = 'update_members_bills_from_db'
+            error['object'] = 'bill'
+            error['id'] = project['id']
+            error['msg'] = err.message
+            self.mongo_client.save_error(error)
 
     def download_all_bills(self, new=False):
         #if new = True download only projects
@@ -1030,14 +1104,24 @@ class SilpyScrapper(object):
     def _update_bills(self, projects):
         index = 0
         while(index < len(projects)):
-            project = projects[index]
-            if 'id' not in project:
-                print 'project id not found'
-                print project
-            else:
-                print "id de proyecto " + project['id']
-                project.update(self.navigator.get_project_details(project['id']))
-                self.mongo_client.upsert_project(project)
+            try:
+                project = projects[index]
+                if 'id' not in project:
+                    print 'project id not found'
+                    print project
+                else:
+                    print "id de proyecto " + project['id']
+                    project.update(self.navigator.get_project_details(project['id']))
+                    self.mongo_client.upsert_project(project)
+            except Exception, err:
+                #write to mongodb
+                traceback.print_exc()
+                error = {}
+                error['method'] = '_update_bills'
+                error['object'] = 'bill'
+                error['id'] = project['id']
+                error['msg'] = err.message
+                self.mongo_client.save_error(error)
             index +=1
             
     def get_commiittees_by_period(self):
