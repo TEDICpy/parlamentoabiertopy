@@ -672,12 +672,9 @@ class SilpyNavigator(object):
             #write to mongodb
             traceback.print_exc()
             error = {}
-            error['type'] = 'buscar_comisiones_por_periodo'
-            error['object'] = 'bill'
-            error['id'] = project_id
+            error['method'] = 'buscar_comisiones_por_periodo'
             error['msg'] = err.message
             self.mongo_client.save_error(error)                    
-
 
     def get_member_projects(self, member_id):
         try:
@@ -701,12 +698,11 @@ class SilpyNavigator(object):
             #write to mongodb
             traceback.print_exc()
             error = {}
-            error['type'] = 'buscar_comisiones_por_periodo'
-            error['object'] = 'bill'
-            error['id'] = project_id
+            error['method'] = 'get_member_projects'
+            error['object'] = 'member'
+            error['id'] =  member_id
             error['msg'] = err.message
             self.mongo_client.save_error(error)                    
-
 
     def buscar_comisiones_por_periodo(self, period):
         #este item prrobablemente deberia ser todo un ciclo de navegacion
@@ -748,9 +744,8 @@ class SilpyNavigator(object):
             #write to mongodb
             traceback.print_exc()
             error = {}
-            error['type'] = 'buscar_comisiones_por_periodo'
+            error['method'] = 'buscar_comisiones_por_periodo'
             error['object'] = 'bill'
-            error['id'] = project_id
             error['msg'] = err.message
             self.mongo_client.save_error(error)                    
 
@@ -782,9 +777,8 @@ class SilpyNavigator(object):
             #write to mongodb
             traceback.print_exc()
             error = {}
-            error['type'] = 'buscar_comisiones_por_periodo'
+            error['method'] = 'list_sessions_by_period'
             error['object'] = 'bill'
-            error['id'] = project_id
             error['msg'] = err.message
             self.mongo_client.save_error(error)                    
 
@@ -886,7 +880,7 @@ class SilpyNavigator(object):
                     #write to mongodb
                     traceback.print_exc()
                     error = {}
-                    error['type'] = 'get_project_details'
+                    error['method'] = '_download_bill_directives'
                     error['object'] = 'bill'
                     error['id'] = project_id
                     error['msg'] = err.message
@@ -930,7 +924,7 @@ class SilpyNavigator(object):
                     #write to mongodb
                     traceback.print_exc()
                     error = {}
-                    error['type'] = 'get_project_details'
+                    error['method'] = '_download_bill_resolutions_and_messages'
                     error['object'] = 'bill'
                     error['id'] = project_id
                     error['msg'] = err.message
@@ -1038,6 +1032,14 @@ class SilpyScrapper(object):
         except Exception, err:
             #write to mongodb
             traceback.print_exc()
+            error = {}
+            error['method'] = 'get_members_data'
+            error['object'] = 'bill'
+            error['id'] = project['id']
+            error['msg'] = err.message
+            self.mongo_client.save_error(error)
+            #write to mongodb
+            traceback.print_exc()
             #self._log_error(err, bill['id'],'_download_bill_directives', index)            
         
     def update_members_bills_from_db(self, origin):
@@ -1052,7 +1054,14 @@ class SilpyScrapper(object):
                 self._update_bills(m['projects'])
         except Exception, err:
             print "WARNING: Improve Exception handling."
+            #write to mongodb
             traceback.print_exc()
+            error = {}
+            error['method'] = 'update_members_bills_from_db'
+            error['object'] = 'bill'
+            error['id'] = project['id']
+            error['msg'] = err.message
+            self.mongo_client.save_error(error)
 
     def download_all_bills(self, new=False):
         #if new = True download only projects
@@ -1108,7 +1117,7 @@ class SilpyScrapper(object):
                 #write to mongodb
                 traceback.print_exc()
                 error = {}
-                error['type'] = 'buscar_comisiones_por_periodo'
+                error['method'] = '_update_bills'
                 error['object'] = 'bill'
                 error['id'] = project['id']
                 error['msg'] = err.message
