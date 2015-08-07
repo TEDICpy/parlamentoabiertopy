@@ -9,13 +9,27 @@ cd data
 echo "Creating Popit..."
 cd ../popit/
 ./build_image.sh
-./create_container.sh
-#docker start popit
+#./create_container.sh
+
+
+
+echo "Creating BillIt..."
+cd ../billit/
+./build_image.sh
+#./create_container.sh
+
+
+
+echo "Creating WriteIt..."
+cd ../writeit/
+./build_image.sh
+#./create_container.sh
+
 
 echo "Creating Legislative..."
 cd ../legislative
 ./build_image.sh
-./create_container.sh
-#docker start legislative
+#./create_container.sh
+
 
 

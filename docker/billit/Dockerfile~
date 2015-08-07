@@ -1,6 +1,0 @@
-FROM ubuntu:14.04
-MAINTAINER Ivan Florentin <ivan@sinergetica.com>
-
-
-ADD init.sh /billit/
-CMD sh /billit/init.sh

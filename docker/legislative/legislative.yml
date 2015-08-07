@@ -22,16 +22,18 @@ production:
   bill_graph_data_length:   '12'
   bill_graph_day_interval:  '7'
   parliaments_initial_date: '1990-03-01'
-  billit_url: ~
-  paperworks_url: 'http://billit.ciudadanointeligente.org/paperworks/'
-  popit_url:  ~
+  #billit_url: 
+  billit_url: 'http://parlamentoabierto.org.py:8002/bills/'
+  paperworks_url: 'http://parlamentoabierto.org.py:8002/bills/'
+  popit_url:  'http://popit.parlamentoabierto.org.py:8000/'
   twitter_tags: 'CongresoAbierto'
   twitter_account:  'ciudadanoi'
-  popit_url:  'parlamento.popit.parlamentoabierto.org.py:3000/api'  # example: 'legislative-instance.popit.mysociety.org'; you will need create a instance, please contact with mysociety's popit team in popit@mysociety.org. http://popit.mysociety.org/instances/new
-  popit_persons:  'http://parlamento.popit.parlamentoabierto.org.py:3000/api/persons/'  # example: 'http://legislative-instance.popit.mysociety.org/api/v0.1/persons/'; the same instance used above but with http and person path
+  popit_url:  'parlamento.popit.parlamentoabierto.org.py:8000/api'
+  popit_persons:  'http://parlamento.popit.parlamentoabierto.org.py:8000/api/persons/'  # example: 'http://legislative-instance.popit.mysociety.org/api/v0.1/persons/'; the same instance used above but with http and person path
   popit_search:   ~   # example: 'http://legislative-instance.popit.mysociety.org/api/v0.1/search/persons?'; used for person search
-  popit_organizations: 'http://parlamento.popit.parlamentoabierto.org.py:3000/api/organizations/'  #example: 'http://legislative-instance.popit.mysociety.org/api/v0.1/organizations/'
+  popit_organizations: 'http://parlamento.popit.parlamentoabierto.org.py:8000/api/organizations/'  #example: 'http://legislative-instance.popit.mysociety.org/api/v0.1/organizations/'
   popit_organizations_search: ~ #example: 'http://legislative-instance.popit.mysociety.org/api/v0.1/search/organizations?'
+  writeit_base_url: 'http://writeit.parlamentoabierto.org.py:8001'
   writeit_base_url: ~
   writeit_url:      ~
   writeit_username: ~
@@ -86,13 +88,15 @@ development:
   #bill_graph_day_interval:  '28'   # amount of days per point in graph
   #parliaments_initial_date: '1990-03-01' # the initial date for bill search purposes
   #billit_url: 'http://billit.ciudadanointeligente.org/bills/'  # example: 'http://billit-instance.org/bills/'; for more info about this POPLUS component check https://github.com/ciudadanointeligente/bill-it
-  paperworks_url: 'http://billit.ciudadanointeligente.org/paperworks/'
-  popit_url:  'parlamento.popit.parlamentoabierto.org.py:3000/api/v0.1'  # example: 'legislative-instance.popit.mysociety.org'; you will need create a instance, please contact with mysociety's popit team in popit@mysociety.org. http://popit.mysociety.org/instances/new
-  popit_persons:  'http://parlamento.popit.parlamentoabierto.org.py:3000/api/v0.1/persons/'  # example: 'http://legislative-instance.popit.mysociety.org/api/v0.1/persons/'; the same instance used above but with http and person path
-  popit_search:   'http://parlamento.popit.parlamentoabierto.org.py:3000/api/v0.1/search/persons/'   # example: 'http://legislative-instance.popit.mysociety.org/api/v0.1/search/persons?'; used for person search
-  popit_organizations: 'http://parlamento.popit.parlamentoabierto.org.py:3000/api/v0.1/organizations/'  #example: 'http://legislative-instance.popit.mysociety.org/api/v0.1/organizations/'
-  popit_organizations_search: 'http://parlamento.popit.parlamentoabierto.org.py:3000/api/v0.1/search/organizations/' #example: 'http://legislative-instance.popit.mysociety.org/api/v0.1/search/organizations?'
-  #writeit_base_url: 'http://localhost:8000' # example: 'http://localhost:3001'; you will need create a instance, please contact with ciudadanointeligente's lab team in lab@ciudadanointeligente.org. http://writeit.ciudadanointeligente.org/
+  billit_url: 'http://billit.parlamentoabierto.org.py:8002/bills/'
+  paperworks_url: 'http://billit.parlamentoabierto.org.py:8002/bills/'
+  #paperworks_url: 'http://billit.ciudadanointeligente.org/paperworks/'
+  popit_url:  'parlamento.popit.parlamentoabierto.org.py:8000/api/v0.1'  # example: 'legislative-instance.popit.mysociety.org'; you will need create a instance, please contact with mysociety's popit team in popit@mysociety.org. http://popit.mysociety.org/instances/new
+  popit_persons:  'http://parlamento.popit.parlamentoabierto.org.py:8000/api/v0.1/persons/'  # example: 'http://legislative-instance.popit.mysociety.org/api/v0.1/persons/'; the same instance used above but with http and person path
+  popit_search:   'http://parlamento.popit.parlamentoabierto.org.py:8000/api/v0.1/search/persons/'   # example: 'http://legislative-instance.popit.mysociety.org/api/v0.1/search/persons?'; used for person search
+  popit_organizations: 'http://parlamento.popit.parlamentoabierto.org.py:8000/api/v0.1/organizations/'  #example: 'http://legislative-instance.popit.mysociety.org/api/v0.1/organizations/'
+  popit_organizations_search: 'http://parlamento.popit.parlamentoabierto.org.py:8000/api/v0.1/search/organizations/' #example: 'http://legislative-instance.popit.mysociety.org/api/v0.1/search/organizations?'
+  #writeit_base_url: 'http://writeit.parlamentoabierto.org.py:8001' # example: 'http://localhost:3001'; you will need create a instance, please contact with ciudadanointeligente's lab team in lab@ciudadanointeligente.org. http://writeit.ciudadanointeligente.org/
   #writeit_url:      '/api/v1/instance/1/'   # example: '/api/v1/instance/2/'; writeit instance path
   #writeit_username: 'admin' # example: 'admin'; writeit username
   #writeit_api_key:  'a'     # example: 'a'; writeit apikey

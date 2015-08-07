@@ -3,5 +3,5 @@
 
 #cd $legislative && rails server --port 5000
 
-cd $legislative && rails server --port 5000
+cd $legislative && rails server --port 8003
 
