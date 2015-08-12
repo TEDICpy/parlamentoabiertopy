@@ -161,6 +161,13 @@ def download_bill_document(index, filename, project_id, viewstate, session_id):
             + '%3Aj_idt186=&formMain%3Aj_idt124_activeIndex=1&javax.faces.ViewState=' + viewstate
      return curl_command(session_id, url, data, filename, dirname)
 
+def download_bill_law(filename, project_id, viewstate, session_id):
+     dirname = 'download/bills/%s/laws' %(project_id)
+     url = "http://sil2py.senado.gov.py/formulario/VerDetalleTramitacion.pmf"
+     data = "formMain=formMain&formMain%3Aj_idt124%3Aj_idt281%3A0%3Aj_idt291=" + \
+            "&formMain%3Aj_idt124_activeIndex=5&javax.faces.ViewState=" + viewstate
+     return curl_command(session_id, url, data, filename, dirname)
+
 def download_file(origin, session_id, viewstate, filename):
 #TODO: pass period id (100063) and origin ('S' or 'D')
 #-H "Cookie: primefaces.download=true; JSESSIONID=21510a5ea2ed66961d5e3b5dd4ba", 

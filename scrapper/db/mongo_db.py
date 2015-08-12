@@ -149,8 +149,9 @@ class SilpyMongoClient(object):
                 for d in project['directives']:
                     if 'files' in d:
                         for f in d['files']:
-                            if hash in f.keys():
-                                return True
+                            if id in f:
+                                if f['id'] == hash:
+                                    return True
                             
                                 
         return False
