@@ -18,6 +18,9 @@ import time
 
 from utils import utils
 
+
+silpy_host = "sil2py.senado.gov.py"
+
 class SilpyHTMLParser(object):
 
     def extraer_items_menu(self, html):
@@ -62,7 +65,7 @@ class SilpyHTMLParser(object):
             if str_images in src:
                 #TODO: download img!
                 #http://sil2py.senado.gov.py/images/100081.jpg
-                row['img'] = 'http://sil2py.senado.gov.py'+src
+                row['img'] = 'http://'+ silpy_host + src
                 row['id'] = src[len(str_images)+1: len(src)].replace('.jpg','')
                 #extraction of formMain
                 #formMain goes in the following request to get
@@ -602,7 +605,7 @@ class SilpyNavigator(object):
             self.browser=browser
         else:
             self.browser = utils.get_new_browser()
-            self.browser.get("http://silpy.congreso.gov.py/main.pmf")                               
+            self.browser.get("http://" + silpy_host + "/main.pmf")                               
 
     def close_driver(self):
        self.browser.close() 
@@ -678,7 +681,7 @@ class SilpyNavigator(object):
 
     def get_member_projects(self, member_id):
         try:
-            url='http://sil2py.senado.gov.py/formulario/verProyectosParlamentario.pmf'\
+            url='http://' + silpy_host + '/formulario/verProyectosParlamentario.pmf'\
                 +'?q=verProyectosParlamentario%2F' + member_id
             self.browser.get(url)
             time.sleep(2)
@@ -688,7 +691,7 @@ class SilpyNavigator(object):
             if s.getText().find('UPS...') != -1:
                 #load main page and needed cookes with it
                 print 'La sesión de la consulta ha expirado!'
-                self.browser.get('http://sil2py.senado.gov.py/main.pmf')
+                self.browser.get('http://' + silpy_host + '/main.pmf')
                 self.browser.get(url)
                 #self.wait_for_document_ready(
                 utils.wait_for_document_ready(self.browser)
@@ -799,7 +802,7 @@ class SilpyNavigator(object):
             print '--------------------------------------------------------------'
             #obtiene una comision e invoca a la url:
             #GET http://silpy.congreso.gov.py/formulario/VerDetalleTramitacion.pmf?q=VerDetalleTramitacion%2F + project_id
-            _url = "http://silpy.congreso.gov.py/formulario/VerDetalleTramitacion.pmf"+ \
+            _url = "http://" + silpy_host + "/formulario/VerDetalleTramitacion.pmf"+ \
                    "?q=VerDetalleTramitacion%2F" + project_id
             self.browser.get(_url)
             #wait
