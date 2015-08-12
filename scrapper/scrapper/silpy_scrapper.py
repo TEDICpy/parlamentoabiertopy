@@ -702,7 +702,7 @@ class SilpyNavigator(object):
             error['object'] = 'member'
             error['id'] =  member_id
             error['msg'] = err.message
-            self.mongo_client.save_error(error)                    
+            self.mongo_client.save_error(error)                   
 
     def buscar_comisiones_por_periodo(self, period):
         #este item prrobablemente deberia ser todo un ciclo de navegacion
@@ -818,6 +818,9 @@ class SilpyNavigator(object):
             if 'resolutions_and_messages' in bill['sections_menu']:
                 print "Downloading %s for bill id %s" %('resolutions and messages', bill['id'])
                 bill = self._download_bill_resolutions_and_messages(bill)
+            if 'laws_and_decrees' in bill['sections_menu']:
+                print "Downloading %s for bill id %s" %('laws and decrees', bill['id'])
+                bill = self._download_bill_laws_and_decrees(bill)
             print '--------------------------------------------------------------'
             return bill
         except Exception, err:
@@ -828,7 +831,7 @@ class SilpyNavigator(object):
             error['object'] = 'bill'
             error['id'] = project_id
             error['msg'] = err.message
-            self.mongo_client.save_error(error)            
+            self.mongo_client.save_error(error)
 
     def _download_bill_directives(self, bill):
         menu_element = self.browser.find_element_by_link_text(
@@ -863,7 +866,7 @@ class SilpyNavigator(object):
                                                            viewstate,
                                                            session_id)
                     
-                        bill['directives'][index]['files'].append({hashid: path})                 
+                        bill['directives'][index]['files'].append({'id':hashid, 'path':path})                 
                 except FileDownloadError, err:
                     #write to mongodb
                     traceback.print_exc()
@@ -882,7 +885,7 @@ class SilpyNavigator(object):
                     error = {}
                     error['method'] = '_download_bill_directives'
                     error['object'] = 'bill'
-                    error['id'] = project_id
+                    error['id'] =  bill['id']
                     error['msg'] = err.message
                     self.mongo_client.save_error(error)                    
             index += 1
@@ -926,7 +929,7 @@ class SilpyNavigator(object):
                     error = {}
                     error['method'] = '_download_bill_resolutions_and_messages'
                     error['object'] = 'bill'
-                    error['id'] = project_id
+                    error['id'] =  bill['id']
                     error['msg'] = err.message
                     self.mongo_client.save_error(error)                    
             bill['resolutions_and_messages'][index] = obj
@@ -973,7 +976,43 @@ class SilpyNavigator(object):
             bill['documents'][doc_index] = doc
             doc_index += 1
         return bill
-    
+
+    def _download_bill_laws_and_decrees(self, bill):
+        try:
+            menu_element = self.browser.find_element_by_link_text(
+                bill['sections_menu']['laws_and_decrees']['text'])
+            menu_element.click()
+            time.sleep(2)
+            for law in bill['laws_and_decrees']:
+                self.browser.find_element_by_id(law['button_id']).click()
+                time.sleep(1)
+                session_id = self.browser.get_cookie('JSESSIONID')['value']
+                viewstate = self.parser.extract_viewstate(self.browser.page_source)
+                law['filepath'] = utils.download_bill_law(None,
+                                                         bill['id'],
+                                                         viewstate,
+                                                         session_id)
+        except FileDownloadError, err:
+            traceback.print_exc()
+            error = {}
+            error['type'] = 'file_download'
+            error['object'] = 'bill'
+            error['id'] = bill['id']
+            error['msg'] = err.msg
+            error['curl_command'] = err.curl_command
+            error['downloader'] = '_download_bill_laws_and_decrees'
+            self.mongo_client.save_error(error)
+        except Exception, err:
+            #write to mongodb
+            traceback.print_exc()
+            error = {}
+            error['type'] = '_download_bill_laws_and_decrees'
+            error['object'] = 'bill'
+            error['id'] = bill['id']
+            error['msg'] = err.message
+            self.mongo_client.save_error(error)
+        return bill
+
     def list_projects_by_committee(self, js_call):
         #TODO:invoke js_call from data dictionary
         #should this  be called when browsing projects by period?
@@ -1034,8 +1073,7 @@ class SilpyScrapper(object):
             traceback.print_exc()
             error = {}
             error['method'] = 'get_members_data'
-            error['object'] = 'bill'
-            error['id'] = project['id']
+            error['object'] = 'member'
             error['msg'] = err.message
             self.mongo_client.save_error(error)
             #write to mongodb
