@@ -1062,15 +1062,15 @@ class SilpyScrapper(object):
                 filename = 'download/img/'+ row['id'] + '.jpg'
                 urllib.urlretrieve(row['img'], filename)
                 index += 1
-            #save members collection here and then proceed to extract bills information
-            #from what is saved in the data base
-            if origin == 'S':
-                print "Guardando datos de Senadores"
-                self.mongo_client.update_senadores(rows)
-            elif origin == 'D':
-                print "Guardando datos de Diputados"
-                self.mongo_client.update_diputados(rows)
-            self.update_members_bills_from_db(origin)
+                #save members collection here and then proceed to extract bills information
+                #from what is saved in the data base
+                if origin == 'S':
+                    print "Guardando datos de Senador"
+                    self.mongo_client.update_senador(row)
+                elif origin == 'D':
+                    print "Guardando datos de Diputado"
+                    self.mongo_client.update_diputado(row)
+            #self.update_members_bills_from_db(origin)
         except Exception, err:
             #write to mongodb
             traceback.print_exc()

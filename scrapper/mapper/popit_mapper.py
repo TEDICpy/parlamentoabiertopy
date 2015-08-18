@@ -35,7 +35,6 @@ auth_key = PopItApiKeyAuth(api_key=api_key)
 url_string = 'http://' + hostname + ':' + str(port) + '/api/' + api_version 
 api = slumber.API(url_string, auth=auth_key)
 
-
 def create_membership(data):     
     organization_id = data['organization_id'] 
     person_id = data['person_id']
@@ -51,7 +50,8 @@ def create_membership(data):
 def create_committees(data):
     comision_id = None
     post_id = None
-    data['name'] = data['text']
+    if 'text' in data:        
+        data['name'] = data['text']
     if 'name' in data:
         print 'creating committee ' + data['name'] 
         name = data['name']
@@ -70,7 +70,6 @@ def create_committees(data):
             result = api.organizations.post(committee)
             comision_id = result['result']['id']
         if 'post' in data:
-            #
             p_id = comision_id + hashlib.sha1(data['post'].encode('latin-1')).hexdigest()
             r = requests.get(url_string + '/posts/' + p_id)
             if r.status_code == 404:
@@ -201,6 +200,7 @@ def upload_member_image(member_id, data):
     #    img: the source of the img
     filename= data['id'] + '.jpg'
     fp = open(images_dir + filename)
+    print filename
     result = api.persons(id=member_id)\
                 .image.post({'source': data['img'],
                             'notes':'Official Portrait'},

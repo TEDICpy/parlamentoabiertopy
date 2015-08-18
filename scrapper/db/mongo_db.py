@@ -54,8 +54,6 @@ class SilpyMongoClient(object):
     def update_senador(self, senador):
         #self.db.senadores.find_one({'id': senador['id'])})
         db_senadores = self.db.senadores
-        if 'projects' in senador:
-            project_ids = self.upsert_projects(senador['projects'])
         result = db_senadores.update({'id':senador['id']}, {'$set':senador}, True)
         
         return result
@@ -77,8 +75,6 @@ class SilpyMongoClient(object):
 
     def update_diputado(self, diputado):
         db_diputados = self.db.diputados
-        if 'projects' in diputado:
-            project_ids = self.upsert_projects(diputado['projects'])
         result = db_diputados.update({'id':diputado['id']}, {'$set':diputado}, True)
         return result
 

@@ -153,21 +153,6 @@ class SenadoresScrapper(object):
     def driver_quit(self):
         self.browser.quit()
 
-    # def make_webdriver_wait(self, by, waited_element):
-    #     try:
-    #         wait = WebDriverWait(self.browser, 15)
-    #         wait.until(EC.presence_of_element_located((by, waited_element)))
-    #         print "Page is ready! Loaded: " + waited_element
-        
-    #     except TimeoutException:
-    #         print "Loading took too much time!"
-
-    # def _wait_document_ready(self, something):
-    #     print something
-    #     is_complete = self.browser.execute_script("return document.readyState;")
-    #     if (is_complete == "complete"):
-    #         return True
-
     def obtener_lista_de_senadores(self):
         url = base_url +  "index.php/senado/nomina/nomina-alfabetica"
         self.browser.get(url)        
@@ -184,11 +169,6 @@ class SenadoresScrapper(object):
             for s in senadores:
                 id = s['id']
                 s = self.get_member_info(s)
-                #retrieve senator from db
-                #senator = self.mongo.get_senator(id)
-                #merge senator data from web and db
-                #senator.update(s)
-                #update senator to db
                 self.mongo.update_senador(s)            
             self.browser.close()
         except Exception, err:
@@ -208,7 +188,6 @@ class SenadoresScrapper(object):
         #extracts dictamenes
         dictamenes = self.parser.parse_dictamenes(data)
         cv = self.parser.parse_senator_info(data)
-#        proyectos = self.parser.parse_senator_presented_projects(data)
         senator.update({'committees': committees,
                         'rulings': dictamenes,
                         'cv': cv})
