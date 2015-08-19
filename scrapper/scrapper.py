@@ -42,7 +42,7 @@ def senadores(no_silpy=False):
 
 @click.command(help="Extrae solo los datos de los diputados.")
 @click.option('--no-silpy', is_flag=True, help="No descarga datos del silpy.")
-def diputados():
+def diputados(no_silpy):
     print 'scrapping diputados'
     if not no_silpy:
         silpy_diputados = SilpyScrapper()
