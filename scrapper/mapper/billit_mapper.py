@@ -67,7 +67,7 @@ def map_billit():
         bill.authors = []
         if 'authors' in p:
             for author in p['authors']:
-                bill.authors.append(author['name'])
+                bill.authors.append(author['id']+':'+author['name'])
         #paperworks
         bill.paperworks = []
         if 'paperworks' in p:
