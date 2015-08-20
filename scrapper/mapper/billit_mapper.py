@@ -90,17 +90,17 @@ def map_billit():
         if 'documents' in p:
             for doc in p['documents']:
                 document = Document()
-            if 'registration_date' in doc:
-                document.date = doc['registration_date']#, :type => DateTime
-            if 'type' in doc:
-                document.type = doc['type']#, :type => String
-                #TODO: generar link a documento
-                # document.number#, :type => String
-                # document.step = doc['']#, :type => String
-                # document.stage = doc['']#, :type => String
-                # document.chamber = doc['']#, :type => String
-                # document.link = doc['']#, :type => String
-                bill.documents.append(document.__dict__)
+                if 'registration_date' in doc:
+                    document.date = doc['registration_date']#, :type => DateTime
+                if 'type' in doc:
+                    document.type = doc['type']#, :type => String
+                    #TODO: generar link a documento
+                    # document.number#, :type => String
+                    # document.step = doc['']#, :type => String
+                    # document.stage = doc['']#, :type => String
+                    # document.chamber = doc['']#, :type => String
+                    # document.link = doc['']#, :type => String
+                    bill.documents.append(document.__dict__)
         #Directives
         bill.directives = []
         if 'directives' in p:
