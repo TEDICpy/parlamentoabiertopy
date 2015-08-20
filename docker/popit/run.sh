@@ -1,1 +1,1 @@
-docker run --net="host" -d  --name popit  -v $PA_SRC:/src -v $PA_INIT:/init --volumes-from data popit sh /init/popit-init.sh
+docker run --net=host --rm -ti  --name popit  -v /data1/ivan/devel/Sinergetica/TEDIC/github:/src -v /data1/ivan/devel/Sinergetica/TEDIC/github/parlamentoabiertopy/docker/init:/init  --volumes-from data popit /bin/bash
