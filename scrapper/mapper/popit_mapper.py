@@ -18,7 +18,6 @@ from popit_config import api_key, instance, hostname, port, user, password, api_
 from popit_config import api_version, images_dir
 from popit_config import mongo_host, mongo_port
 
-
 mg_client = pymongo.MongoClient(host=mongo_host, port=mongo_port)
 mdb = mg_client.silpy01
 senadores = mdb.senadores
