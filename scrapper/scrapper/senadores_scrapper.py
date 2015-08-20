@@ -64,7 +64,7 @@ class SenadoresParser(object):
         projects = []
         soup = BeautifulSoup(data)
         cv = soup.find(id = '2-1-curriculum-vitae')#save as chunk of data?
-        return cv.getText()
+        return str(cv)
         
     def parse_senator_committees(self, html):      
         soup = BeautifulSoup(html)
