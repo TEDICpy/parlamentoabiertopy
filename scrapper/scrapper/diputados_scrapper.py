@@ -67,7 +67,7 @@ class DiputadosScrapper(object):
         #return as plain text
         cv = None
         if len(tables) > 0:
-             cv = tables[1].getText()
+             cv = str(tables[1])
         return cv
 
     #deprecated: extracted from silpy
