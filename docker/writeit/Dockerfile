@@ -7,7 +7,7 @@ ENV data /data
 ENV LANG es_PY.UTF-8
 ENV LANGUAGE es_PY.UTF-8:es
 
-RUN touch /writeit
+RUN touch /writeit.0
 
 RUN apt-get update
 RUN apt-get upgrade -y
@@ -26,13 +26,13 @@ RUN cd $src && git clone https://github.com/ciudadanointeligente/write-it.git
 RUN locale-gen es_PY.UTF-8
 
 ADD settings.py $writeit/writeit/
-ADD init.sh $writeit
+#ADD init.sh $writeit
 ADD db_init.sh /
 
 RUN cd $writeit  && pip install -r requirements.txt
 
 #VOLUME ["/src"]
-RUN mkdir /data
+#RUN mkdir /data
 #VOLUME ["/data"]
 
 #RUN sqlite3 /data/writeit.db
@@ -49,8 +49,10 @@ RUN mkdir /data
 # Luego en otra consola mientras el contenedor aun esta corriendo:
 #  $ docker commit -a "Ivan Florentin" -m "writeit dbconfig" -p writeit writeit:1
 #
-
-
+# para poner en produccion: 
+# $sqlite3 /data/write-it.db
+###  update django_site set domain = 'writeit.parlamentoabierto.org.py:8001';
+# update django_site set domain = 'writeit.parlamentoabierto.org.py:8001' , name = 'writeit.parlamentoabierto.org.py' where id = 1;
 #CMD cd /write-it && python manage.py runserver 0.0.0.0:8000
 
 
