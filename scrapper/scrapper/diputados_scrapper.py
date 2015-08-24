@@ -67,7 +67,10 @@ class DiputadosScrapper(object):
         #return as plain text
         cv = None
         if len(tables) > 0:
-             cv = str(tables[1])
+            cv = tables[1]
+            if cv.img:
+                cv.img.decompose()
+            cv = str(cv)
         return cv
 
     #deprecated: extracted from silpy
