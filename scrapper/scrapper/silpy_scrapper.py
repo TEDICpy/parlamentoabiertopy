@@ -275,27 +275,46 @@ class SilpyHTMLParser(object):
 
     def extract_project_details(self, html):
         bill = {}
+        #extract the numeric part of the id, it changes over time
+        
+        nid=html[html.find('expedienteCamara') - 12 :html.find('expedienteCamara')][9:]
+        nid = nid.replace(':', '')
+        base_id = 'j_idt'+nid #this part use used as base of the id
         soup = BeautifulSoup(html)
-        #j_idt80:j_idt81_content
         #formMain:j_idt81_content
-        info_div = soup.find(id='j_idt80:j_idt81_content')
-
-        #informacion del proyecto
+        #j_idt80:j_idt81_content
+        #j_idt66:j_idt67_content
+        content_id = base_id+':j_idt'+ str(int(nid) + 1) +'_content'
+        info_div = soup.find(id=base_id+':j_idt'+ str(int(nid) + 1) +'_content')
+        spans = info_div.find_all('span')
+        # print '##############################'
+        # ids = []
+        # for span in spans:
+        #     #print type(span['id'])
+        #     if u'id' in span:
+        #         print span
+        #         ids.append(span['id'])
+        # print ids
+        # print '##############################'
+        #Informacion del proyecto
         info = {}
-        info['file'] = info_div.find(id='j_idt80:expedienteCamara').text.strip()
-        info['type'] = info_div.find(id='j_idt80:idTipoProyecto').text.strip()
-        info['subject'] = info_div.find(id='j_idt80:idMateria').text.strip()
-        info['importance'] = info_div.find(id='j_idt80:idUrgencia').text.strip()
-        info['entry_date'] = info_div.find(id='j_idt80:fechaIngreso').text.strip()
-        info['iniciativa'] = info_div.find(id='j_idt80:idTipoIniciativa').text.strip()
-        info['origin'] = info_div.find(id='j_idt80:idOrigen').text.strip()
-        info['message'] =info_div.find(id='j_idt80:numeroMensaje').text.strip()
-        info['heading'] =info_div.find(id='j_idt80:acapite').text.strip()
-
+        info['file'] = info_div.find(id=base_id+':expedienteCamara').text.strip()
+        info['type'] = info_div.find(id=base_id + ':idTipoProyecto').text.strip()
+        info['importance'] = info_div.find(id=base_id + ':idUrgencia').text.strip()
+        info['entry_date'] = info_div.find(id=base_id + ':fechaIngreso').text.strip()
+        info['iniciativa'] = info_div.find(id=base_id + ':idTipoIniciativa').text.strip()
+        info['origin'] = info_div.find(id=base_id + ':idOrigen').text.strip()
+        info['message'] =info_div.find(id=base_id + ':numeroMensaje').text.strip()
+        info['heading'] =info_div.find(id=base_id + ':acapite').text.strip()
+        
+        if info_div.find(id=base_id + ':idMateria'):
+            info['subject'] = info_div.find(id=base_id + ':idMateria').text.strip()
+        
         bill['info'] = info
         #Etapa de la Tramitación
+        #id='j_idt80:j_idt81_content'
         etapa = {}
-        main_table = soup.find(id='j_idt80:j_idt81_content')
+        main_table = info_div
         etapas_table = main_table.table.table
         status_statges_list = etapas_table.find_all('span', {'class': "itemResaltado3D-2"})
         stage_substage = status_statges_list[1].text.split("/")
@@ -304,30 +323,74 @@ class SilpyHTMLParser(object):
         etapa['status'] = status_statges_list[0].text.strip()
         bill['stage'] = etapa
 
+        #this changes over time
+        section_id_number = '109'
         #need to show sections and download related files
-        bill['sections_menu'] = self._extract_project_sections_menu(soup)
-        
+        menu = self._extract_project_sections_menu(soup, section_id_number)
+        bill['sections_menu'] = menu
         #documentos de iniciativa            
-        bill['documents'] = self._extract_project_documents(soup)
-        #detalle de tramitacion        
-        bill['paperworks'] = self._extract_project_paperworks(soup)
+        bill['documents'] = self._extract_project_documents(soup, menu['documents']['id'])
+        #detalle de tramitacion
+        if 'paperworks' in menu:
+            bill['paperworks'] = self._extract_project_paperworks(soup, menu['paperworkss']['id'])
         #autores
-        bill['authors'] = self._extract_project_authors(soup)
+        bill['authors'] = self._extract_project_authors(soup, menu['authors']['id'])
         # ?? dictamenes formMain:j_idt124:j_idt203
-        bill['directives'] = self._extract_project_directives(soup)
+        if 'directives' in menu:
+            bill['directives'] = self._extract_project_directives(soup, menu['directives']['id'])
         #resoluciones y mensajes -> ?
-        if 'resolutions_and_messages' in bill['sections_menu']:
-            bill['resolutions_and_messages'] = self._extract_projects_resolutions_and_messages(soup)
-        if 'laws_and_decrees' in bill['sections_menu']:
-            bill['laws_and_decrees'] = self._extract_laws_and_decrees(soup)
+        if 'resolutions_and_messages' in menu:
+            bill['resolutions_and_messages'] = \
+                self._extract_projects_resolutions_and_messages(soup, menu['resolutions_and_messages']['id'])
+        if 'laws_and_decrees' in menu:
+            bill['laws_and_decrees'] = self._extract_laws_and_decrees(soup, menu['laws_and_decrees']['id'])
         return bill
 
-    def _extract_laws_and_decrees(self, soup):
-        main_tbody = soup.find(id='formMain:j_idt124:j_idt281_data')
-        #TODO: extract filename
-        print "######################"
-        print "WARNING: laws and decrees found"
-        print "######################"
+    def _extract_project_sections_menu(self, soup, idnumber):        
+        #parse lateral menu and extract sections 
+        #sections must be show to click on buttons
+        #clicking is done by the navigator
+        sections_menu = {}
+        sections_ul = soup.find(id='formMain:j_idt'+idnumber).ul
+        a_list = sections_ul.find_all('a')
+        for a in a_list:            
+            #the text of the section is followd by [N]
+            #where N is the number of rows in that section
+            sections_menu['text'] = a.text.strip()
+            text = a.text
+            key = None
+            if u'Tramitación' in text: 
+                key = 'papaerwork'
+            elif u'Documentos de Iniciativa' in text:
+                key = 'documents'
+            elif u'Autores'in text:
+                key = 'authors'
+            elif u'Dictámenes'in text:
+                key = 'directives'
+            elif u'Resoluciones y Mensajes'in text:
+                key = 'resolutions_and_messages'
+            elif u'Leyes y Decretos'in text:
+                key = 'laws_and_decrees' #?
+            else:
+                key = text.strip()
+            sections_menu[key] = {'text' : a.text.strip(),
+                                  'href': a['href'],
+                                  'id': a['href'].replace('#','')}
+        return sections_menu
+
+    def _extract_project_authors(self, soup, id):
+        autores_tbody = soup.find(id=id).tbody
+        autores_tr_list = autores_tbody.find_all('tr')
+        autores = []
+        for tr in autores_tr_list:
+            reverse = tr.td.img['src'][::-1]
+            id = reverse[reverse.index('.')+1: reverse.index('/')][::-1]
+            autor = {'id': id, 'name': tr.text.strip()}
+            autores.append(autor)
+        return autores
+
+    def _extract_laws_and_decrees(self, soup, id):
+        main_tbody = soup.find(id= id)#'formMain:j_idt124:j_idt281_data')
         result = []
         tr_list = main_tbody.find_all('tr', recursive=False)
         for tr in tr_list:
@@ -342,9 +405,9 @@ class SilpyHTMLParser(object):
             result.append(info)
         return result
 
-    def _extract_projects_resolutions_and_messages(self, soup):
+    def _extract_projects_resolutions_and_messages(self, soup, id):
         resolutions_and_messages = []
-        main_tbody = soup.find(id= 'formMain:j_idt124:j_idt220_data')
+        main_tbody = soup.find(id= id)#''formMain:j_idt124:j_idt220_data')
         if main_tbody:
             tr_list = main_tbody.find_all('tr', recursive=False)
             for tr in tr_list:
@@ -386,8 +449,8 @@ class SilpyHTMLParser(object):
                 resolutions_and_messages.append(res)
         return resolutions_and_messages
      
-    def _extract_project_documents(self, soup):
-        docs_tbody = soup.find(id='formMain:j_idt124:dataTableDetalle_data')
+    def _extract_project_documents(self, soup, id):
+        docs_tbody = soup.find(id=id)#''formMain:j_idt124:dataTableDetalle_data')
         if docs_tbody == None:
             return None
         documents = []
@@ -409,12 +472,12 @@ class SilpyHTMLParser(object):
             documents.append(doc)
         return documents
         
-    def _extract_project_directives(self, soup):
+    def _extract_project_directives(self, soup, id):
         #TODO: result column presents different structures
         #first row is committee:
         #   1. Economía, Cooperativismo, Desarrollo e Integración Económica Latinoamericana
         #   chamber
-        main = soup.find(id='formMain:j_idt124:j_idt203')
+        main = soup.find(id=id)#''formMain:j_idt124:j_idt203')
         if main == None:
             return None
         directives_tbody = main.find('tbody')
@@ -443,22 +506,11 @@ class SilpyHTMLParser(object):
             directives.append(directive)
             index += 1
         return directives
-        
-    def _extract_project_authors(self, soup):
-        autores_tbody = soup.find(id='formMain:j_idt124:j_idt190').find('tbody')
-        autores_tr_list = autores_tbody.find_all('tr')
-        autores = []
-        for tr in autores_tr_list:
-            reverse = tr.td.img['src'][::-1]
-            id = reverse[reverse.index('.')+1: reverse.index('/')][::-1]
-            autor = {'id': id, 'name': tr.text.strip()}
-            autores.append(autor)
-        return autores
-    
-    def _extract_project_paperworks(self, soup):
+            
+    def _extract_project_paperworks(self, soup, id):
         #recieves a soup object from method extract_project_details
         paperworks = []
-        tbody_content = soup.find(id='formMain:j_idt124:dataTableTramitacion_data')
+        tbody_content = soup.find(id=id)#''formMain:j_idt124:dataTableTramitacion_data')
         paperwork_tr_list = tbody_content.find_all('tr', recursive=False)
         for tr in paperwork_tr_list:
             paperwork = {}
@@ -510,37 +562,6 @@ class SilpyHTMLParser(object):
             paperwork['result'] = result
             paperworks.append(paperwork)
         return paperworks
-
-    def _extract_project_sections_menu(self, soup):        
-        #parse lateral menu and extract sections 
-        #sections must be show to click on buttons
-        #clicking is done by the navigator
-        sections_menu = {}
-        sections_ul = soup.find(id='formMain:j_idt124').ul
-        a_list = sections_ul.find_all('a')
-        for a in a_list:            
-            #the text of the section is followd by [N]
-            #where N is the number of rows in that section
-            sections_menu['text'] = a.text.strip()
-            text = a.text
-            key = None
-            if u'Tramitación' in text: 
-                key = 'papaerwork'
-            elif u'Documentos de Iniciativa' in text:
-                key = 'documents'
-            elif u'Autores'in text:
-                key = 'authors'
-            elif u'Dictámenes'in text:
-                key = 'directives'
-            elif u'Resoluciones y Mensajes'in text:
-                key = 'resolutions_and_messages'
-            elif u'Leyes y Decretos'in text:
-                key = 'laws_and_decrees' #?
-            else:
-                key = text.strip()
-            sections_menu[key] = {'text' : a.text.strip(), 'href': a['href']}                
-        return sections_menu
-
        
     def extraer_miembros_por_comision(self, html):
         soup = BeautifulSoup(html)
@@ -797,7 +818,7 @@ class SilpyNavigator(object):
         #TODO async?
         utils.download_file(origin, session_id, viewstate, filename)
         
-    def get_project_details(self, project_id):
+    def get_project_details(self, project_id, no_files=False):
         try:
             print '--------------------------------------------------------------'
             #obtiene una comision e invoca a la url:
@@ -809,23 +830,27 @@ class SilpyNavigator(object):
             #TODO: extract result count
             #wait to find that index
             time.sleep(2)
+            print 'Getting'
+            print _url
             bill = self.parser.extract_project_details(self.browser.page_source)
             bill['id'] = project_id
-            #TODO: download all the files related to this project
-            #download files for documents
-            print "Downloading %s for bill id %s" %('documents', bill['id'])
-            bill = self._download_bill_documents(bill)
-            if 'directives' in bill['sections_menu']:
-                print "Downloading %s for bill id %s" %('directives', bill['id'])
-                bill = self._download_bill_directives(bill)
-            if 'resolutions_and_messages' in bill['sections_menu']:
-                print "Downloading %s for bill id %s" %('resolutions and messages', bill['id'])
-                bill = self._download_bill_resolutions_and_messages(bill)
-            if 'laws_and_decrees' in bill['sections_menu']:
-                print "Downloading %s for bill id %s" %('laws and decrees', bill['id'])
-                bill = self._download_bill_laws_and_decrees(bill)
-            print '--------------------------------------------------------------'
-            return bill
+            #if true do not download files
+            if no_files == True:
+                return bill
+            else:
+                print "Downloading %s for bill id %s" %('documents', bill['id'])
+                bill = self._download_bill_documents(bill)
+                if 'directives' in bill['sections_menu']:
+                    print "Downloading %s for bill id %s" %('directives', bill['id'])
+                    bill = self._download_bill_directives(bill)
+                if 'resolutions_and_messages' in bill['sections_menu']:
+                    print "Downloading %s for bill id %s" %('resolutions and messages', bill['id'])
+                    bill = self._download_bill_resolutions_and_messages(bill)
+                if 'laws_and_decrees' in bill['sections_menu']:
+                    print "Downloading %s for bill id %s" %('laws and decrees', bill['id'])
+                    bill = self._download_bill_laws_and_decrees(bill)
+                print '--------------------------------------------------------------'
+                return bill
         except Exception, err:
             #write to mongodb
             traceback.print_exc()
@@ -834,6 +859,7 @@ class SilpyNavigator(object):
             error['object'] = 'bill'
             error['id'] = project_id
             error['msg'] = err.message
+            error['url'] = _url
             self.mongo_client.save_error(error)
 
     def _download_bill_directives(self, bill):
@@ -1104,7 +1130,7 @@ class SilpyScrapper(object):
             error['msg'] = err.message
             self.mongo_client.save_error(error)
 
-    def download_all_bills(self, new=False):
+    def download_all_bills(self, new=False, no_files=False):
         #if new = True download only projects
         #not found in db.projects collection
         try:
@@ -1130,19 +1156,17 @@ class SilpyScrapper(object):
                 #TODO: remove from the unique list projects that are in db.projects
                 # get all projects from members that are on the unique list
                 downloaded_projects = list(db.projects.find({},{'_id':0,'id': 1}))
-                print len(downloaded_projects)
-                print len(all_projects)
                 for dp in downloaded_projects:
                     "Project with id %s already downloaded." %dp['id'] 
                     del all_projects[dp['id']]
                     
             print 'Downloading %s and their related files.' %(len(all_projects))
-            self._update_bills(all_projects.values())
+            self._update_bills(all_projects.values(), no_files)
         except Exception, err:
             print "WARNING: Improve Exception handling."
             traceback.print_exc()
         
-    def _update_bills(self, projects):
+    def _update_bills(self, projects, no_files=False):
         index = 0
         while(index < len(projects)):
             try:
@@ -1152,7 +1176,7 @@ class SilpyScrapper(object):
                     print project
                 else:
                     print "id de proyecto " + project['id']
-                    project.update(self.navigator.get_project_details(project['id']))
+                    project.update(self.navigator.get_project_details(project['id'], no_files))
                     self.mongo_client.upsert_project(project)
             except Exception, err:
                 #write to mongodb
