@@ -332,7 +332,7 @@ class SilpyHTMLParser(object):
         bill['documents'] = self._extract_project_documents(soup, menu['documents']['id'])
         #detalle de tramitacion
         if 'paperworks' in menu:
-            bill['paperworks'] = self._extract_project_paperworks(soup, menu['paperworkss']['id'])
+            bill['paperworks'] = self._extract_project_paperworks(soup, menu['paperworks']['id'])
         #autores
         bill['authors'] = self._extract_project_authors(soup, menu['authors']['id'])
         # ?? dictamenes formMain:j_idt124:j_idt203
@@ -360,7 +360,7 @@ class SilpyHTMLParser(object):
             text = a.text
             key = None
             if u'Tramitación' in text: 
-                key = 'papaerwork'
+                key = 'paperworks'
             elif u'Documentos de Iniciativa' in text:
                 key = 'documents'
             elif u'Autores'in text:
