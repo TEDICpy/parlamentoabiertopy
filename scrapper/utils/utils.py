@@ -31,7 +31,6 @@ class FileDownloadError(Exception):
           self.data = data
           self.filename = filename
 
-
 def get_new_browser():
 #     browser = webdriver.Firefox()
      browser = webdriver.PhantomJS()

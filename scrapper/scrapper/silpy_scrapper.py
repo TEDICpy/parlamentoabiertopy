@@ -275,8 +275,9 @@ class SilpyHTMLParser(object):
 
     def extract_project_details(self, html):
         bill = {}
+        #this changes over time
+        section_id_number = '109'
         #extract the numeric part of the id, it changes over time
-        
         nid=html[html.find('expedienteCamara') - 12 :html.find('expedienteCamara')][9:]
         nid = nid.replace(':', '')
         base_id = 'j_idt'+nid #this part use used as base of the id
@@ -287,16 +288,6 @@ class SilpyHTMLParser(object):
         content_id = base_id+':j_idt'+ str(int(nid) + 1) +'_content'
         info_div = soup.find(id=base_id+':j_idt'+ str(int(nid) + 1) +'_content')
         spans = info_div.find_all('span')
-        # print '##############################'
-        # ids = []
-        # for span in spans:
-        #     #print type(span['id'])
-        #     if u'id' in span:
-        #         print span
-        #         ids.append(span['id'])
-        # print ids
-        # print '##############################'
-        #Informacion del proyecto
         info = {}
         info['file'] = info_div.find(id=base_id+':expedienteCamara').text.strip()
         info['type'] = info_div.find(id=base_id + ':idTipoProyecto').text.strip()
@@ -323,8 +314,6 @@ class SilpyHTMLParser(object):
         etapa['status'] = status_statges_list[0].text.strip()
         bill['stage'] = etapa
 
-        #this changes over time
-        section_id_number = '109'
         #need to show sections and download related files
         menu = self._extract_project_sections_menu(soup, section_id_number)
         bill['sections_menu'] = menu
@@ -332,7 +321,7 @@ class SilpyHTMLParser(object):
         bill['documents'] = self._extract_project_documents(soup, menu['documents']['id'])
         #detalle de tramitacion
         if 'paperworks' in menu:
-            bill['paperworks'] = self._extract_project_paperworks(soup, menu['paperworkss']['id'])
+            bill['paperworks'] = self._extract_project_paperworks(soup, section_id_number)
         #autores
         bill['authors'] = self._extract_project_authors(soup, menu['authors']['id'])
         # ?? dictamenes formMain:j_idt124:j_idt203
@@ -360,7 +349,7 @@ class SilpyHTMLParser(object):
             text = a.text
             key = None
             if u'Tramitación' in text: 
-                key = 'papaerwork'
+                key = 'paperworks'
             elif u'Documentos de Iniciativa' in text:
                 key = 'documents'
             elif u'Autores'in text:
@@ -507,10 +496,10 @@ class SilpyHTMLParser(object):
             index += 1
         return directives
             
-    def _extract_project_paperworks(self, soup, id):
+    def _extract_project_paperworks(self, soup, nid):
         #recieves a soup object from method extract_project_details
         paperworks = []
-        tbody_content = soup.find(id=id)#''formMain:j_idt124:dataTableTramitacion_data')
+        tbody_content = soup.find(id='formMain:j_idt'+ str(nid) +':dataTableTramitacion_data')#'formMain:j_idt124:dataTableTramitacion_data')
         paperwork_tr_list = tbody_content.find_all('tr', recursive=False)
         for tr in paperwork_tr_list:
             paperwork = {}
