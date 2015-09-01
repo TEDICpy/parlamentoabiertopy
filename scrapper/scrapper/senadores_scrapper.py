@@ -192,7 +192,7 @@ class SenadoresScrapper(object):
         cv = self.parser.parse_senator_info(data)
         senator.update({'committees': committees,
                         'rulings': dictamenes,
-                        'cv': cv})
+                        'cv': url})
         return senator
 
     def get_all_articles(self):
