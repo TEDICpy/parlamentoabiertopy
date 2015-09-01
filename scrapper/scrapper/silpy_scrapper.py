@@ -276,7 +276,7 @@ class SilpyHTMLParser(object):
     def extract_project_details(self, html):
         bill = {}
         #this changes over time
-        section_id_number = '109'
+        section_id_number = var_form_id
         #extract the numeric part of the id, it changes over time
         nid=html[html.find('expedienteCamara') - 12 :html.find('expedienteCamara')][9:]
         nid = nid.replace(':', '')
@@ -318,7 +318,7 @@ class SilpyHTMLParser(object):
         menu = self._extract_project_sections_menu(soup, section_id_number)
         bill['sections_menu'] = menu
         #documentos de iniciativa            
-        bill['documents'] = self._extract_project_documents(soup, menu['documents']['id'])
+        bill['documents'] = self._extract_project_documents(soup, section_id_number)
         #detalle de tramitacion
         if 'paperworks' in menu:
             bill['paperworks'] = self._extract_project_paperworks(soup, section_id_number)
@@ -438,13 +438,14 @@ class SilpyHTMLParser(object):
                 resolutions_and_messages.append(res)
         return resolutions_and_messages
      
-    def _extract_project_documents(self, soup, id):
-        docs_tbody = soup.find(id=id)#''formMain:j_idt124:dataTableDetalle_data')
+    def _extract_project_documents(self, soup, section_id_number):
+        docs_tbody = soup.find(id='formMain:j_idt' + section_id_number + ':dataTableDetalle_data')
         if docs_tbody == None:
             return None
         documents = []
         index = 0
-        for tr in docs_tbody.find_all('tr', recursive=False):
+        tr_list = docs_tbody.find_all('tr', recursive=False)
+        for tr in tr_list:
             if tr.text.strip() == 'Sin registros...':
                 #nothing found
                 break
@@ -598,7 +599,7 @@ from selenium.webdriver.support import expected_conditions as E
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.by import By
-from utils.utils import FileDownloadError
+from utils.utils import FileDownloadError, var_form_id
 
 class SilpyNavigator(object):
     """
@@ -819,8 +820,7 @@ class SilpyNavigator(object):
             #TODO: extract result count
             #wait to find that index
             time.sleep(2)
-            print 'Getting'
-            print _url
+            print 'Getting ' +  _url
             bill = self.parser.extract_project_details(self.browser.page_source)
             bill['id'] = project_id
             #if true do not download files
@@ -829,7 +829,7 @@ class SilpyNavigator(object):
             else:
                 print "Downloading %s for bill id %s" %('documents', bill['id'])
                 bill = self._download_bill_documents(bill)
-                if 'directives' in bill['sections_menu']:
+                if False: #b0rk 'directives' in bill['sections_menu']:
                     print "Downloading %s for bill id %s" %('directives', bill['id'])
                     bill = self._download_bill_directives(bill)
                 if 'resolutions_and_messages' in bill['sections_menu']:
@@ -880,7 +880,7 @@ class SilpyNavigator(object):
                         viewstate = self.parser.extract_viewstate(self.browser.page_source)
                         path = utils.download_bill_directive(directive['index'],
                                                            button['index'],
-                                                           bill['id'],
+                                                           bill['info']['file'],
                                                            viewstate,
                                                            session_id)
                     
@@ -927,7 +927,7 @@ class SilpyNavigator(object):
                     button['path'] = utils.download_bill_resolutions_and_messages(index,
                                                                button['index'],
                                                                button['name'],
-                                                               bill['id'],
+                                                               bill['info']['file'],
                                                                viewstate,
                                                                session_id)
                 except FileDownloadError, err:
@@ -966,9 +966,9 @@ class SilpyNavigator(object):
                 self.browser.find_element_by_id(doc['button_id']).click()
                 session_id = self.browser.get_cookie('JSESSIONID')['value']
                 viewstate = self.parser.extract_viewstate(self.browser.page_source)
-                doc['path'] = utils.download_bill_document(doc['index'],
+                doc['path'] = utils.download_bill_document(doc['button_id'],
                                                        doc['name'],
-                                                       bill['id'],
+                                                       bill['info']['file'],
                                                        viewstate,
                                                        session_id)
             except FileDownloadError, err:
@@ -1007,7 +1007,7 @@ class SilpyNavigator(object):
                 session_id = self.browser.get_cookie('JSESSIONID')['value']
                 viewstate = self.parser.extract_viewstate(self.browser.page_source)
                 law['filepath'] = utils.download_bill_law(None,
-                                                         bill['id'],
+                                                         bill['info']['file'],
                                                          viewstate,
                                                          session_id)
         except FileDownloadError, err:
