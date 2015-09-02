@@ -1,6 +1,6 @@
 FROM ubuntu:14.04
 MAINTAINER  Ivan Florentin <ivan@sinergetica.com>
-EXPOSE 8000
+#EXPOSE 8000
 LABEL "version"="1.0"
 ENV data /data
 
@@ -11,23 +11,26 @@ RUN touch /writeit
 
 RUN apt-get update
 RUN apt-get upgrade -y
-RUN apt-get install -y wget git sqlite3
-RUN apt-get install -y python-pip python-dev libpython-dev libffi-dev libssl-dev g++  yui-compressor python-urllib3
+RUN apt-get install -y wget git sqlite3  python-pip python-dev libpython-dev libffi-dev libssl-dev g++  yui-compressor python-urllib3
 RUN wget -t0 -c https://download.elastic.co/elasticsearch/elasticsearch/elasticsearch-1.5.1.deb
 RUN dpkg -i elasticsearch-1.5.1.deb
 RUN update-rc.d elasticsearch defaults 95 10
-RUN /etc/init.d/elasticsearch start
+#RUN /etc/init.d/elasticsearch start
+
+
+
+RUN touch /etc/writeit
 
 RUN mkdir /src
 ENV src /src
 ENV writeit /src/write-it
-RUN cd $src && git clone https://github.com/ciudadanointeligente/write-it.git
+RUN cd $src && git clone https://github.com/ivanflorentin/write-it.git
 
-RUN locale-gen es_PY.UTF-8
+#RUN locale-gen es_PY.UTF-8
 
 ADD settings.py $writeit/writeit/
-ADD init.sh $writeit
-ADD db_init.sh /
+ADD init.sh /src/writeit/
+ADD db_init.sh /src/writeit/
 
 RUN cd $writeit  && pip install -r requirements.txt
 
