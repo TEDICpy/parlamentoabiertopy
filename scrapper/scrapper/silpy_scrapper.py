@@ -1048,13 +1048,14 @@ class SilpyNavigator(object):
 from db.mongo_db import SilpyMongoClient
 import urllib2
 
+
 class SilpyScrapper(object):
 
     def __init__(self):   
         self.periods = ['2013-2014', '2014-2015']
         self.origins = ['D', 'S']
-        self.navigator = SilpyNavigator()
-        self.parser = SilpyHTMLParser()
+        #self.navigator = SilpyNavigator()
+        #self.parser = SilpyHTMLParser()
         self.mongo_client = SilpyMongoClient()
 
     def close_navigator(self):
@@ -1165,8 +1166,12 @@ class SilpyScrapper(object):
                     print project
                 else:
                     print "id de proyecto " + project['id']
-                    project.update(self.navigator.get_project_details(project['id'], no_files))
+                    navigator = SilpyNavigator()
+                    #parser = SilpyHTMLParser()
+                    self.mongo_client = SilpyMongoClient()
+                    project.update(navigator.get_project_details(project['id'], no_files))
                     self.mongo_client.upsert_project(project)
+                    navigator.close_driver()
             except Exception, err:
                 #write to mongodb
                 traceback.print_exc()
