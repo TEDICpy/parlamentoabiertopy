@@ -67,10 +67,11 @@ def map_bills():
 @click.option('--origin', default='all', help="Origen de datos, 'all' para todos," +
               " 's' para senadores y 'd' para diputados.")
 @click.option('--new', is_flag=True, help="Descarga solo nuevos projectos de ley. Disponible solo para 'all'.")
-def bills(origin='all', new=False):    
+@click.option('--no-files', is_flag=True, help="No descarga los archivos relacionados.")
+def bills(origin='all', new=False, no_files=False):
     if origin == 'all':
         silpy_scrapper = SilpyScrapper()
-        silpy_scrapper.download_all_bills(new)
+        silpy_scrapper.download_all_bills(new, no_files)
     elif origin == 's':
         silpy_senadores = SilpyScrapper()
         silpy_senadores.update_members_bills_from_db('S')

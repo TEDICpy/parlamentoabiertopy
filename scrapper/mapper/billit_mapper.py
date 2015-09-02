@@ -28,14 +28,32 @@ def get_chamber(chamber):
     return chamber
 
 def map_billit():
-    projects = mdb.projects.find()
+    offset = 50
+    start = 0
+    end = offset
+    total = mdb.projects.count()
+    while end < total:
+        if (total - end) > offset:
+            end += offset
+        else:
+            end = total
+        projects = mdb.projects.find()[start:end]
+        post_projects(projects)
+        print "-------------------------"
+        print "start " + str(start)
+        print "end " + str(end)
+        print "diff " + str(total - end)
+        print "-------------------------"
+        start = end
+        
+        
+def post_projects(projects):
     for p in projects:
         print "loading bill with uuid= %s" %(p['id'])
         bill = Bill()
         if 'file' in  p:
-            bill.uid = p['file'] #use nro de expediente?
-            #if 'id' in  p:
-            #    bill.id = p['id'] #use nro de expediente?
+            bill.uid = p['file'] 
+            bill.scrap_id = p['id']
         if 'title' in p:
             bill.title = p['title']
         if 'entry_date' in p:
@@ -62,8 +80,6 @@ def map_billit():
                 bill.sub_stage = stage['sub_stage']
             if 'status' in stage:
                 bill.status = stage['status']
-
-        #TODO: how do we relate it with popit? id? link?
         bill.authors = []
         if 'authors' in p:
             for author in p['authors']:
@@ -99,7 +115,7 @@ def map_billit():
                     # document.step = doc['']#, :type => String
                     # document.stage = doc['']#, :type => String
                     # document.chamber = doc['']#, :type => String
-                    # document.link = doc['']#, :type => String
+                    document.link = doc['name']#, :type => String
                     bill.documents.append(document.__dict__)
         #Directives
         bill.directives = []
@@ -118,66 +134,3 @@ def map_billit():
         r = requests.post(host + '/bills', data=json.dumps(bill.__dict__))
         print "------------------------------------------------------------------------------  "
         print r.content
-
-
-# bill = {
-#     'uid': 'D-1327888',#file
-#     'id': '101491', #id
-#     'title' : 'PROYECTO DE LEY: QUE CONCEDE PENSION GRACIABLE A LA SEÑORA \
-#     MAFALDA MUÑOZ LUGO', #title
-#     'abstract' : 'PROYECTO DE LEY: QUE CONCEDE PENSION GRACIABLE A LA SEÑORA\
-#     MAFALDA MUÑOZ LUGO', #info->heading
-#     'creation_date': '16/09/2013',#entry_date
-#     'source': 'C. Diputados',#info->origin (conversion)
-#     'initial_chamber': 'C. Diputados',# copiado de origin
-#     'stage': 'Resolucion de archivo', #stage->stage
-#     'sub_stage': 'Tercer trámite constitucional',#stage->sub_stage
-#     'status' : 'ARCHIVADO',#stage->status
-#     'resulting_document': '',
-#
-#     'merged_bills': [], #not found
-#     'subject_areas': [],#not found
-#     'authors': [#authors
-#         {"id" : "100162", "name" : "Acosta Alcaraz, Edgar"},
-#         {"id" : "100138", "name" : "Cabral González, Elio"}
-#     ],
-#     'publish_date' :'',#not found
-#     'tags': [],#not found
-#     'bill_draft_link': '',#not found
-#     'current_priority': '',#not found
-#     'urgent': 'Simple',#info->importance, one of: ["Discusión inmediata", "Suma", "Simple"]
-#
-#     'paperworks': [{#paperworks
-#         'session' : 'ORDINARIA Nro. 74', #paperworks->session
-#         'date': '08/10/2014', #paperworks->date
-#         'description': '',#not found
-#         'stage': 'Primer trámite constitucional Entrada de expediente',#paperworks->stage
-#         'chamber': 'C. Diputados',#paperworks->chamber
-#         'bill_uid': '',#parent bill... leave it to billit
-#         'timeline_status': 'PASA A COMISIÓN',#paperworks->result->value
-#     }],
-#     'priorities': [],#not found
-#     'reports': [],#not found
-#     'documents': [#documents
-#         {
-#          'number': '0',#index
-#          'date': '16/10/2014',#  registration_date
-#          'step': '', #not found
-#          'stage' '', #not found
-#          'type': 'PROYECTO', #type
-#          'chamber': '',#not found
-#          'link': '' #name... generar url
-#         }
-#     ],
-#     'directives': [#directives
-#         {
-#         'date':'',#date
-#         'step': '',#result?
-#         'stage': '',#nada
-#         'link': ''#
-#         }
-#     ],#not found
-#     'remarks': [],#not found
-#     'motions': [],#not found
-#     'revisions': []#not found
-# }
