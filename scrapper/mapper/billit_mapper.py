@@ -28,14 +28,32 @@ def get_chamber(chamber):
     return chamber
 
 def map_billit():
-    projects = mdb.projects.find()
+    offset = 50
+    start = 0
+    end = offset
+    total = mdb.projects.count()
+    while end < total:
+        if (total - end) > offset:
+            end += offset
+        else:
+            end = total
+        projects = mdb.projects.find()[start:end]
+        post_projects(projects)
+        print "-------------------------"
+        print "start " + str(start)
+        print "end " + str(end)
+        print "diff " + str(total - end)
+        print "-------------------------"
+        start = end
+        
+        
+def post_projects(projects):
     for p in projects:
         print "loading bill with uuid= %s" %(p['id'])
         bill = Bill()
         if 'file' in  p:
-            bill.uid = p['file'] #use nro de expediente?
-            #if 'id' in  p:
-            #    bill.id = p['id'] #use nro de expediente?
+            bill.uid = p['file'] 
+            bill.scrap_id = p['id']
         if 'title' in p:
             bill.title = p['title']
         if 'entry_date' in p:
@@ -62,8 +80,6 @@ def map_billit():
                 bill.sub_stage = stage['sub_stage']
             if 'status' in stage:
                 bill.status = stage['status']
-
-        #TODO: how do we relate it with popit? id? link?
         bill.authors = []
         if 'authors' in p:
             for author in p['authors']:
@@ -99,7 +115,7 @@ def map_billit():
                     # document.step = doc['']#, :type => String
                     # document.stage = doc['']#, :type => String
                     # document.chamber = doc['']#, :type => String
-                    # document.link = doc['']#, :type => String
+                    document.link = doc['name']#, :type => String
                     bill.documents.append(document.__dict__)
         #Directives
         bill.directives = []
@@ -118,4 +134,3 @@ def map_billit():
         r = requests.post(host + '/bills', data=json.dumps(bill.__dict__))
         print "------------------------------------------------------------------------------  "
         print r.content
-    projects.close()
