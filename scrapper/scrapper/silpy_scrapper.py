@@ -276,7 +276,7 @@ class SilpyHTMLParser(object):
     def extract_project_details(self, html):
         bill = {}
         #this changes over time
-        section_id_number = var_form_id
+        section_id_number = utils.var_form_id
         #extract the numeric part of the id, it changes over time
         nid=html[html.find('expedienteCamara') - 12 :html.find('expedienteCamara')][9:]
         nid = nid.replace(':', '')
