@@ -1054,8 +1054,8 @@ class SilpyScrapper(object):
     def __init__(self):   
         self.periods = ['2013-2014', '2014-2015']
         self.origins = ['D', 'S']
-        #self.navigator = SilpyNavigator()
-        #self.parser = SilpyHTMLParser()
+        self.navigator = SilpyNavigator()
+        self.parser = SilpyHTMLParser()
         self.mongo_client = SilpyMongoClient()
 
     def close_navigator(self):
