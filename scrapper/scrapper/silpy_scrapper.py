@@ -367,6 +367,14 @@ class SilpyHTMLParser(object):
                                   'id': a['href'].replace('#','')}
         return sections_menu
 
+    def _extract_file_static_link(self, a_element):
+        #extracts the file static link from the mailto icon
+        link = a_element['href']
+        link = link[link.index('http'):]
+        link = link.replace('%3A',':').replace('%3F','?')
+        print link
+        return link
+
     def _extract_project_authors(self, soup, id):
         autores_tbody = soup.find(id=id).tbody
         autores_tr_list = autores_tbody.find_all('tr')
@@ -379,7 +387,7 @@ class SilpyHTMLParser(object):
         return autores
 
     def _extract_laws_and_decrees(self, soup, id):
-        main_tbody = soup.find(id= id)#'formMain:j_idt124:j_idt281_data')
+        main_tbody = soup.find(id= id).table.tbody#'formMain:j_idt124:j_idt281_data')
         result = []
         tr_list = main_tbody.find_all('tr', recursive=False)
         for tr in tr_list:
@@ -391,12 +399,13 @@ class SilpyHTMLParser(object):
                     #k,v= itr.text.strip().split('\n') #more than one value to unpack
                     #info[k] = v
             info['button_id'] = tr.find('button')['id']
+            info['link'] = self._extract_file_static_link(tr.find('a'))
             result.append(info)
         return result
 
     def _extract_projects_resolutions_and_messages(self, soup, id):
         resolutions_and_messages = []
-        main_tbody = soup.find(id= id)#''formMain:j_idt124:j_idt220_data')
+        main_tbody = soup.find(id= id).table.tbody#''formMain:j_idt124:j_idt220_data')
         if main_tbody:
             tr_list = main_tbody.find_all('tr', recursive=False)
             for tr in tr_list:
@@ -407,14 +416,19 @@ class SilpyHTMLParser(object):
                 #Mensaje : 334 15/04/2014
                 #Versions: only buttons apparently, easy
                 buttons = []
+                links = []
                 dt_list = td_list[1].find_all('dt')
                 index = 0
                 for dt in dt_list:
                     buttons.append({'index': index,
                                     'name': dt.text.replace('ui-button ', '').strip(),
                                     'id': dt.button['id']})
+
+                    links.append(self._extract_file_static_link(dt.a))
                     index += 1
                 res['buttons'] = buttons
+                res['links'] = links
+                
                 #the first column contains a table within a table
                 #iterate over rows and extracts elements
                 #columns resolution/message label - id(number) - date(may or may not be present)
@@ -452,12 +466,14 @@ class SilpyHTMLParser(object):
             td_list = tr.find_all('td',recursive=False)
             doc = {}
             doc['type'] = td_list[0].text.strip()
-            name = td_list[1].text.strip().split('\n')
+            name = td_list[2].text.strip().split('\n')
             doc['name'] = name[0].strip()
             doc['file_size'] = name[1].strip().replace('[', '').replace(']', '')
             doc['registration_date'] = td_list[2].text.strip()
             doc['button_id'] = tr.button['id']#will be pressed somewhere
-            doc['index'] = index #list index correlates with table row index which is part of the button_id 
+            doc['index'] = index #list index correlates with table row index which is part of the button_id
+            #todo: link
+            doc['link'] = self._extract_file_static_link(td_list[2].a)
             index += 1
             documents.append(doc)
         return documents
@@ -485,14 +501,20 @@ class SilpyHTMLParser(object):
             #will be pressed somewhere
             buttons = []
             buttons_elements = td_list[1].find_all('button')
+            #mailto links
+            a_elements = td_list[1].find_all('a')
+            directive['links'] = []
             b_index = 0
             for b in buttons_elements:
                 #extract here index of the button
                 #that will be used in the body of the request
                 buttons.append({'index': b_index,
-                                'id': td_list[1].button['id']})
+                                'id': td_list[1].button['id']})                
+                directive['links'].append(self._extract_file_static_link(a_elements[b_index]))
                 b_index +=1
+                
             directive['buttons'] = buttons
+            #download links
             directives.append(directive)
             index += 1
         return directives
@@ -795,7 +817,6 @@ class SilpyNavigator(object):
             error['object'] = 'bill'
             error['msg'] = err.message
             self.mongo_client.save_error(error)                    
-
     
     def download_attachment(self, origin, button_id, filename):
         #download attachments:
