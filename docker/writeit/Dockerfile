@@ -30,7 +30,11 @@ ADD settings.py $writeit/writeit/
 ADD db_init.sh /
 
 RUN cd $writeit  && pip install -r requirements.txt
+RUN echo "deb http://www.rabbitmq.com/debian/ testing main" >>/etc/apt/sources.list
+RUN wget https://www.rabbitmq.com/rabbitmq-signing-key-public.asc
+RUN apt-key add rabbitmq-signing-key-public.asc
 
+RUN apt-get install -y rabbitmq-server
 #VOLUME ["/src"]
 #RUN mkdir /data
 #VOLUME ["/data"]
