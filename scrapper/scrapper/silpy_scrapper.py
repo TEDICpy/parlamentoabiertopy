@@ -1187,13 +1187,14 @@ class SilpyScrapper(object):
                     print project
                 else:
                     print "id de proyecto " + project['id']
-                    navigator = SilpyNavigator()
+                    #navigator = SilpyNavigator()
                     #parser = SilpyHTMLParser()
                     self.mongo_client = SilpyMongoClient()
-                    project.update(navigator.get_project_details(project['id'], no_files))
+                    project.update(self.navigator.get_project_details(project['id'], no_files))
                     self.mongo_client.upsert_project(project)
-                    navigator.close_driver()
+                    #navigator.close_driver()
             except Exception, err:
+                self.navigator.close_driver()
                 #write to mongodb
                 traceback.print_exc()
                 error = {}

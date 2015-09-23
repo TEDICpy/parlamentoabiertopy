@@ -68,6 +68,25 @@ def read_file_as_string(file):
         f +=l
     return f
 
+
+def download_from_static_link(link, dir, filename):
+     out = dir+filename
+     os.system(command)
+     command = u'curl ' + url \
+          +' -H "Host: sil2py.senado.gov.py"'\
+          +' -H "User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:33.0) Gecko/20100101 Firefox/33.0"'\
+          +' -H "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"'\
+          +' -H "Accept-Language: en-US,en;q=0.5"'\
+          +' -H "Accept-Encoding: gzip, deflate"'\
+          +' -H "Cookie: primefaces.download=true; JSESSIONID='+ session_id + '"'\
+          +' -H "Connection: keep-alive"'\
+          +' -H "Content-Type: application/x-www-form-urlencoded"'\
+          +' --compressed'\
+          +' -o ' + out \
+          
+     command = command.encode('utf-8')
+     return dir+filename
+     
 def curl_command(session_id, url, data, filename, dir):
      try:
           if not os.path.exists(dir):
@@ -163,9 +182,6 @@ def download_bill_document(button_id, filename, project_id, viewstate, session_i
      url = "http://sil2py.senado.gov.py/formulario/VerDetalleTramitacion.pmf"
      viewstate = viewstate.replace(':','%3A') 
      data = 'formMain=formMain&' + button_id + '=&formMain%3Aj_idt' +  var_form_id +'_activeIndex=1&javax.faces.ViewState=' + viewstate
-
-     # data = 'formMain=formMain&formMain%3Aj_idt'+  var_form_id +'%3AdataTableDetalle%3A' + str(index) \
-     #        + '%3Aj_idt186=&formMain%3Aj_idt'+  var_form_id +'_activeIndex=1&javax.faces.ViewState=' + viewstate
      return curl_command(session_id, url, data, filename, dirname)
 
 def download_bill_law(filename, project_id, viewstate, session_id):

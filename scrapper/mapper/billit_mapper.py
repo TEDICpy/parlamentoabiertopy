@@ -46,7 +46,6 @@ def map_billit():
         print "-------------------------"
         start = end
         
-        
 def post_projects(projects):
     for p in projects:
         print "loading bill with uuid= %s" %(p['id'])
