@@ -15,6 +15,10 @@ def download_from_static_link(link, dir, filename):
         os.makedirs(base_dir+dir)
 
     out = base_dir+dir+'/'+filename
+    if os.path.exists(out):
+        print 'File %s already exists.' %(out)
+        return dir+filename
+    
     command = u'curl ' + link \
           +' -H "Host: sil2py.senado.gov.py"'\
           +' -H "User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:33.0) Gecko/20100101 Firefox/33.0"'\
@@ -32,11 +36,10 @@ def download_from_static_link(link, dir, filename):
 def download_files(bills):
     for bill in bills:
         print 'Downloading files for bill %s' %bill['id']
-        dir = 'download/bills/%s/' %bill['info']['file']
+        dir = 'download/bills/%s/documents' %bill['info']['file']
         documents  = bill['documents']
         index = 0
         for doc in documents:
-            dir = dir+'documents'
             print doc['link']
             doc['path'] = download_from_static_link(doc['link'], dir, doc['name'])
             bill['documents'][index] = doc
