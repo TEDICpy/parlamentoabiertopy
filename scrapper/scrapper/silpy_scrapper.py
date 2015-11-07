@@ -72,7 +72,8 @@ class SilpyHTMLParser(object):
                 # committee details  list_projects_by_committee(body_param)
                 #lis = td_list[3].div.div.find_all("li")
                 #work_div contains two subdivs, one for projects and the other 
-                #for designations 
+                #for designations
+                return rows
                 work_divs = td_list[3].div.find_all('div', recursive=False)
                 committees_lis = work_divs[0].find_all("li")
                 committees = []
@@ -372,7 +373,6 @@ class SilpyHTMLParser(object):
         link = a_element['href']
         link = link[link.index('http'):]
         link = link.replace('%3A',':').replace('%3F','?')
-        print link
         return link
 
     def _extract_project_authors(self, soup, id):
@@ -676,6 +676,7 @@ class SilpyNavigator(object):
         """returns the list of parlamentraries for the period 2008-2013
            @origin: S=senadores, D=diputados """
         try:
+            period = 4
             #TODO: makte option selection with parameters
             #for origin and period
             self._call_menu_item(u'Parlamentarios por Período')#from side menu
@@ -689,7 +690,7 @@ class SilpyNavigator(object):
             select_camara.select_by_value(origin)
             select_periodo = self.browser.find_element_by_id("formMain:idPeriodoLegislativo_input")
             select = Select(select_periodo)
-            select.select_by_index(4)
+            select.select_by_index(period)
             self.browser.execute_script("PrimeFaces.ab({source:'formMain:cmdBuscarParlamentario'" +\
                                         ",update:'formMain'});return false;")        
             # wait for th class? Yes
@@ -701,7 +702,8 @@ class SilpyNavigator(object):
                                       self.browser)#".ui-datatable-header.ui-widget-header")
             number_of_rows = self.parser.number_of_rows_found(self.browser.page_source) #extraemos la cantidad de registros encontrados
             #esperamos por la aparicion del ultimo registro en base a su css
-            last_row_id = "formMain:dataTable:%s:j_idt90" %(str(number_of_rows - 1))
+            last_row_id = "formMain:dataTable:%s:j_idt87" %(str(number_of_rows - 1))
+
             utils.make_webdriver_wait(By.ID, last_row_id, self.browser)
             return self.browser.page_source
         except Exception, err:
@@ -806,6 +808,7 @@ class SilpyNavigator(object):
             number_of_rows = self.count_table_rows()
             #we wait for the button in the lat row 
             #Ex: formMain:dataTable:53:toggle
+
             last_row_id = "formMain:dataTable:%s:toggle" %(str(number_of_rows - 1))
             utils.make_webdriver_wait(By.ID, last_row_id, self.browser)
             return self.browser.page_source
@@ -1096,7 +1099,8 @@ class SilpyScrapper(object):
                 html = self.navigator.get_member_projects(member_id)
                 row['projects'] = self.parser.parse_projects_by_parlamentary(html)
                 #download img
-                filename = 'download/img/'+ row['id'] + '.jpg'
+                filename = 'download/img2008_20013/'+ row['id'] + '.jpg'
+                print 'downloading image: ' + row['id'] + '.jpg'
                 urllib.urlretrieve(row['img'], filename)
                 index += 1
                 #save members collection here and then proceed to extract bills information
