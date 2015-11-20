@@ -35,7 +35,7 @@ class FileDownloadError(Exception):
           self.filename = filename
 
 def get_new_browser():
-#     browser = webdriver.Firefox()
+     #browser = webdriver.Firefox()
      browser = webdriver.PhantomJS()
      browser.set_window_size(1120, 550)
      return browser
@@ -121,8 +121,7 @@ def curl_command(session_id, url, data, filename, dir):
           +' -o ' + out \
           +' --dump-header ' + out+'.header'\
 
-          command = command.encode('utf-8')
-          
+          command = command.encode('utf-8')          
           os.system(command)
           f = open(out+'.header')
           lines = f.readlines()
@@ -145,6 +144,7 @@ def curl_command(session_id, url, data, filename, dir):
           return dir+filename
      except:
           traceback.print_exc()
+          print curl_command
           raise FileDownloadError('Downlad failed', command, data, filename)
 
 def download_bill_directive(row_index, button_index, project_id, viewstate, session_id):
@@ -189,6 +189,7 @@ def download_bill_law(filename, project_id, viewstate, session_id):
      url = "http://sil2py.senado.gov.py/formulario/VerDetalleTramitacion.pmf"
      data = "formMain=formMain&formMain%3Aj_idt"+  var_form_id +"%3Aj_idt281%3A0%3Aj_idt291=" + \
             "&formMain%3Aj_idt"+ var_form_id +"_activeIndex=5&javax.faces.ViewState=" + viewstate
+     
      return curl_command(session_id, url, data, filename, dirname)
 
 def download_file(origin, session_id, viewstate, filename):

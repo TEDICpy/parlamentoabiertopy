@@ -78,6 +78,14 @@ def bills(origin='all', new=False, no_files=False):
     elif origin == 'd':
         silpy_diputados = SilpyScrapper()
         silpy_diputados.update_members_bills_from_db('D')
+
+        
+@click.command(help="Actualiza los proyectos de ley.")
+def update_bills():
+    print 'Actualizando Proyectos de Ley'
+    silpy = SilpyScrapper()
+    silpy.update_bills()
+    
     
 cli.add_command(all)
 cli.add_command(senadores)
@@ -85,6 +93,7 @@ cli.add_command(diputados)
 cli.add_command(map_persons)
 cli.add_command(map_bills)
 cli.add_command(bills)
+cli.add_command(update_bills)
 
 if __name__ == "__main__":
     cli()

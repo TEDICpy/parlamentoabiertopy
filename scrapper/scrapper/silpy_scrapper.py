@@ -12,14 +12,17 @@ import urllib
 import hashlib 
 import requests
 import unicodedata
+import datetime
+import time
+
 from bs4 import BeautifulSoup, CData
 from HTMLParser import HTMLParser
-import time
 
 from utils import utils
 
 
 silpy_host = "sil2py.senado.gov.py"
+NO_ROWS_FOUND= 'Sin registros...'
 
 class SilpyHTMLParser(object):
 
@@ -211,6 +214,30 @@ class SilpyHTMLParser(object):
                     projects.append(project)
         return projects
 
+    def parse_bills_list_by_date(self, html):
+        soup = BeautifulSoup(html)
+        tbody = soup.find(id='formMain:dataTable_data')
+        tr_list = tbody.find_all('tr', recursive=False)
+        bills = []
+        #id = last_table.tbody.td.a['href'][::-1]
+        #id = id[:id.index('%') - 2][::-1]
+        #project['id'] = id
+        for tr in tr_list:
+            td_list= tr.find_all('td', recursive=False)
+            texts = td_list[2].text.split('\n')
+            js_call = td_list[2].a['onclick']
+            
+            info = {}
+            info['type'] = texts[0].strip()
+            info['heading'] = ''.join(texts[1:]).strip()
+            bill = {}                               
+            bill['nro_ley'] = td_list[1].text
+            bill['info'] = info
+            bill['camara'] = td_list[3].text
+            bill['js_call'] = js_call
+            bills.append(bill)
+        return bills
+
     def parsear_lista_de_proyectos_dialog(html):
         #recibe el hmtl de la lista de sesiones
         #con el dialog de la lista de proyectos
@@ -241,7 +268,7 @@ class SilpyHTMLParser(object):
         return proyectos
 
     def extract_session_attachment(self, html):
-        #anexos por de la sesion
+        #anexos de la sesion
         soup = BeautifulSoup(html)
         anexos_table = soup.find(id="formMain:dataTableDetalle").table
         tr_list = anexos_table.tbody.find_all('tr')
@@ -380,10 +407,12 @@ class SilpyHTMLParser(object):
         autores_tr_list = autores_tbody.find_all('tr')
         autores = []
         for tr in autores_tr_list:
-            reverse = tr.td.img['src'][::-1]
-            id = reverse[reverse.index('.')+1: reverse.index('/')][::-1]
-            autor = {'id': id, 'name': tr.text.strip()}
-            autores.append(autor)
+            if tr.td.img:
+                reverse = tr.td.img['src'][::-1]
+                id = reverse[reverse.index('.')+1: reverse.index('/')][::-1]
+                autores.append({'id': id, 'name': tr.text.strip()})
+            else:
+                autores.append({'id': 0, 'name':  tr.td.text.strip()})
         return autores
 
     def _extract_laws_and_decrees(self, soup, id):
@@ -599,20 +628,27 @@ class SilpyHTMLParser(object):
     def number_of_rows_found(self, html):
         #numero de registros encontrados en la tabla
         #aparentemente se utiliza la misma clase css en diferentes tablas
+        # TODO: "Sin registros..." found return None
         soup = BeautifulSoup(html)
-        th = soup.find('th', {'class':"ui-datatable-header ui-widget-header"}) 
+        #check if there's something found
+        tbody = soup.find('tbody', id='formMain:dataTable_data')
+        if tbody.text == NO_ROWS_FOUND:
+            return None
+        
+        th = soup.find('th', {'class':"ui-datatable-header ui-widget-header"})
         text = th.table.tbody.tr.td.text
         number_of_rows = text[0 : text.index('registros recuperados')]
         return int(number_of_rows.strip())
     
     def extract_viewstate(self, html):
         soup = BeautifulSoup(html)
+        #print soup
         viewState_container = soup.find(id="javax.faces.ViewState")
         viewState = None
         if viewState_container.name == 'input': 
             viewState = viewState_container['value']
         elif viewState_container.name == 'update':
-            viewstate = viewState_container.text         
+            viewstate = viewState_container.text     
         return viewState
 
 
@@ -787,6 +823,55 @@ class SilpyNavigator(object):
             error['msg'] = err.message
             self.mongo_client.save_error(error)                    
 
+    def lsit_bills_by_date(self, start, end):
+        #dates are in dd/mm/yyyy format
+        #<select id="formMain:idOrigen2_input" name="formMain:idOrigen2_input">
+        #<option value="S" selected="selected">CAMARA DE SENADORES</option>
+        #<option value="D">CAMARA DE DIPUTADOS</option>
+        #<option value="A">---AMBAS CAMARAS---</option>
+        #</select>
+        self._call_menu_item(u'Leyes por Fecha')
+        utils.make_webdriver_wait(By.ID, "formMain:idOrigen2_input", self.browser)
+        select_camara_element = self.browser.find_element_by_id("formMain:idOrigen2_input")
+        select_camara = Select(select_camara_element)
+        select_camara.select_by_value("A")#both chambers
+        #formMain:fechaDesde_input
+        #formMain:fechaHasta_input
+        textfiled_start_date = self.browser. \
+                               find_element_by_id("formMain:fechaDesde_input")
+        textfiled_start_date.send_keys(start)
+        textfiled_end_date = self.browser. \
+                             find_element_by_id("formMain:fechaHasta_input")
+        textfiled_end_date.send_keys(end)
+        #button_id= formMain:j_idt76
+        search_button = self.browser.find_element_by_id("formMain:j_idt76")
+        search_button.click()
+        time.sleep(3)
+        #formMain:dataTable:47:j_idt87
+        number_of_rows = self.parser.number_of_rows_found(self.browser.page_source)
+        if not number_of_rows:
+            return None
+        waited_element = 'formMain:dataTable:%s:j_idt87' %(str(number_of_rows-1))
+        utils.make_webdriver_wait(By.ID, "formMain:idOrigen2_input", self.browser)
+        result = []
+        bills = self.parser.parse_bills_list_by_date(self.browser.page_source)
+        for bill in bills:
+            self.browser.execute_script(bill['js_call'])
+            #we wait for papge ready + 5 seconds
+            utils.wait_for_document_ready(self.browser)
+            time.sleep(3)
+            #extract bill data
+            bill.update(self.parser.extract_project_details(self.browser.page_source))
+            #press return button
+            #j_idt61:j_idt64
+            reverse = self.browser.current_url[::-1]
+            bill['id'] = reverse[0: reverse.index('F2%')][::-1]
+            bill = self.download_bill_files(bill)
+            result.append(bill)
+            return_button = self.browser.find_element_by_id("j_idt61:j_idt64")
+            return_button.click()
+        return result
+            
     #period = 2014-2013
     #origin = D(diputados), S(senadores)
     def list_sessions_by_period(self, origin, period):
@@ -832,17 +917,14 @@ class SilpyNavigator(object):
         #TODO async?
         utils.download_file(origin, session_id, viewstate, filename)
         
+    
     def get_project_details(self, project_id, no_files=False):
         try:
-            print '--------------------------------------------------------------'
             #obtiene una comision e invoca a la url:
             #GET http://silpy.congreso.gov.py/formulario/VerDetalleTramitacion.pmf?q=VerDetalleTramitacion%2F + project_id
             _url = "http://" + silpy_host + "/formulario/VerDetalleTramitacion.pmf"+ \
                    "?q=VerDetalleTramitacion%2F" + project_id
             self.browser.get(_url)
-            #wait
-            #TODO: extract result count
-            #wait to find that index
             time.sleep(2)
             print 'Getting ' +  _url
             bill = self.parser.extract_project_details(self.browser.page_source)
@@ -851,18 +933,7 @@ class SilpyNavigator(object):
             if no_files == True:
                 return bill
             else:
-                print "Downloading %s for bill id %s" %('documents', bill['id'])
-                bill = self._download_bill_documents(bill)
-                if False: #b0rk 'directives' in bill['sections_menu']:
-                    print "Downloading %s for bill id %s" %('directives', bill['id'])
-                    bill = self._download_bill_directives(bill)
-                if 'resolutions_and_messages' in bill['sections_menu']:
-                    print "Downloading %s for bill id %s" %('resolutions and messages', bill['id'])
-                    bill = self._download_bill_resolutions_and_messages(bill)
-                if 'laws_and_decrees' in bill['sections_menu']:
-                    print "Downloading %s for bill id %s" %('laws and decrees', bill['id'])
-                    bill = self._download_bill_laws_and_decrees(bill)
-                print '--------------------------------------------------------------'
+                bill = self.download_bill_files(bill)
                 return bill
         except Exception, err:
             #write to mongodb
@@ -875,6 +946,20 @@ class SilpyNavigator(object):
             error['url'] = _url
             self.mongo_client.save_error(error)
 
+    def download_bill_files(self, bill):
+        print "Downloading %s for bill id %s" %('documents', bill['id'])
+        bill = self._download_bill_documents(bill)
+        if False: #b0rk 'directives' in bill['sections_menu']:
+            print "Downloading %s for bill id %s" %('directives', bill['id'])
+            bill = self._download_bill_directives(bill)
+        if 'resolutions_and_messages' in bill['sections_menu']:
+            print "Downloading %s for bill id %s" %('resolutions and messages', bill['id'])
+            bill = self._download_bill_resolutions_and_messages(bill)
+        if 'laws_and_decrees' in bill['sections_menu']:
+            print "Downloading %s for bill id %s" %('laws and decrees', bill['id'])
+            bill = self._download_bill_laws_and_decrees(bill)
+        return bill
+            
     def _download_bill_directives(self, bill):
         menu_element = self.browser.find_element_by_link_text(
             bill['sections_menu']['directives']['text'])
@@ -1012,7 +1097,7 @@ class SilpyNavigator(object):
                     error = {}
                     error['type'] = 'get_project_details'
                     error['object'] = 'bill'
-                    error['id'] = project_id
+                    error['id'] = bill['id']
                     error['msg'] = err.message
                     self.mongo_client.save_error(error)
             bill['documents'][doc_index] = doc
@@ -1071,7 +1156,6 @@ class SilpyNavigator(object):
 #######################
 from db.mongo_db import SilpyMongoClient
 import urllib2
-
 
 class SilpyScrapper(object):
 
@@ -1144,7 +1228,7 @@ class SilpyScrapper(object):
             error['id'] = project['id']
             error['msg'] = err.message
             self.mongo_client.save_error(error)
-
+ 
     def download_all_bills(self, new=False, no_files=False):
         #if new = True download only projects
         #not found in db.projects collection
@@ -1180,15 +1264,52 @@ class SilpyScrapper(object):
         except Exception, err:
             print "WARNING: Improve Exception handling."
             traceback.print_exc()
+
+
+    def update_bills(self):
+        #gets bills that has been updated
+        #searching bill by a range of date brings all those that were in some way updated
+        #it does not brings by ordered by entry_date
+        #Mechanism:
+        # 1- Look bills by a range of date,
+        #   the first time we can get all bills within a year is ideal,
+        #   then use from last update date to today.    
+        # 2- List and iterate over them.
+        # 3- create or update "last_bills" collection
+        # updated_bill has the last updated date
+        # and the bills from that date
+        d = datetime.datetime.utcnow()
         
+        updated_bills = self.mongo_client.db.updated_bills.find_one()
+        if not updated_bills:
+            #create new updated bill from the beginning of this year
+            start = "01/01/%d" %(d.year)
+        else:
+            start = updated_bills['last_update']
+        
+        end = d.strftime("%d/%m/%Y")
+        
+        bills = self.navigator.lsit_bills_by_date(start, end)
+        updated_bills = {'id': 1}
+        updated_bills['last_update'] = end
+        last_bills = {}
+        last_bills['start_date'] = start
+        last_bills['end_date'] = end
+        last_bills['bills'] = bills
+        updated_bills[end] = last_bills
+        self.mongo_client.db.updated_bills.update({'id':1},
+                                                   {'$set':updated_bills},
+                                                   True)
+
     def _update_bills(self, projects, no_files=False):
+        #Recieves a list of bills, from the data base or
+        #from scrapping and updates existing records in the DB.        
         index = 0
         while(index < len(projects)):
             try:
                 project = projects[index]
                 if 'id' not in project:
                     print 'project id not found'
-                    print project
                 else:
                     print "id de proyecto " + project['id']
                     #navigator = SilpyNavigator()
