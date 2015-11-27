@@ -118,29 +118,10 @@ def curl_command(session_id, url, data, filename, dir):
           +' -H "Content-Type: application/x-www-form-urlencoded"'\
           +' --data "'+ data + '"'\
           +' --compressed'\
-          +' -o ' + out \
-          +' --dump-header ' + out+'.header'\
-
+          +' -o ' + out
+          #+' --dump-header ' + out+'.header'\
           command = command.encode('utf-8')          
           os.system(command)
-          f = open(out+'.header')
-          lines = f.readlines()
-          r = [x for x in lines if 'filename' in x]#name extracted from header
-          #si no encuentra el nombre aqui es porque no bajo nada :/
-          if rename and len(r) > 0:
-               r = r[0]
-               new_filename = r[r.index('filename')+len('filename='):r.index('\r')] \
-                    .replace('"','').encode('utf-8')
-               print "renamig file to %s" %(new_filename)
-               os.rename(out, dir+new_filename)
-               return dir+new_filename
-          elif len(r) == 0:
-               print "this failed"
-               print "filename %s" %(filename)
-               print "retrying..."
-               time.sleep(2)
-               os.system(command)
-               raise FileDownloadError('Downlad failed', command, data, filename)     
           return dir+filename
      except:
           traceback.print_exc()
