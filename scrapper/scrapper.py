@@ -5,7 +5,7 @@ from scrapper.senadores_scrapper import SenadoresScrapper
 from scrapper.diputados_scrapper import DiputadosScrapper
 
 from mapper.popit_mapper import map_popit
-from mapper.billit_mapper import map_billit
+from mapper.billit_mapper import map_billit, update_or_create
 
 @click.group()
 def cli():
@@ -62,7 +62,12 @@ def map_persons():
 def map_bills():
     print 'Exportando a Bill-it.'
     map_billit()
-    
+
+@click.command(help="Actualiza los proyectos de ley en Bill-it.")
+def update_billit():
+    print 'Actualizando Bill-it.'
+    update_or_create()
+
 @click.command(help="descarga los proyectos de leyes")
 @click.option('--origin', default='all', help="Origen de datos, 'all' para todos," +
               " 's' para senadores y 'd' para diputados.")
@@ -80,13 +85,12 @@ def bills(origin='all', new=False, no_files=False):
         silpy_diputados.update_members_bills_from_db('D')
 
         
-@click.command(help="Actualiza los proyectos de ley.")
+@click.command(help="Actualiza los proyectos de ley a la base de datos local.")
 def update_bills():
     print 'Actualizando Proyectos de Ley'
     silpy = SilpyScrapper()
     silpy.update_bills()
-    
-    
+       
 cli.add_command(all)
 cli.add_command(senadores)
 cli.add_command(diputados)
@@ -94,6 +98,7 @@ cli.add_command(map_persons)
 cli.add_command(map_bills)
 cli.add_command(bills)
 cli.add_command(update_bills)
+cli.add_command(update_billit)
 
 if __name__ == "__main__":
     cli()

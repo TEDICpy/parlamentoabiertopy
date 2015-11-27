@@ -1,8 +1,8 @@
 #-*- coding: utf-8 -*-
 '''
-
 @author: Demian Florentin<demian@sinergetica.com>
 '''
+
 import requests
 import json
 import uuid
@@ -27,6 +27,28 @@ def get_chamber(chamber):
         return "Senado"
     return chamber
 
+
+def update_or_create():
+    #get all projects from "updated_bills" collection
+    #verify if the collection exists already
+    #if does not make post request
+    #otherwise make put request
+    updated_bills = mdb.updated_bills.find_one()
+    last_update = updated_bills['last_update']
+    
+    #print updated_bills[last_update]['bills'][1]
+    for b in updated_bills[last_update]['bills']:
+        bill_id= b['info']['file']
+        bill = create_bill_object(b)
+        r = requests.get(host + '/bills/' + bill_id)
+        if r.status_code == 200:
+            print "Updating Bill %s" %(bill_id)
+            r = requests.put(host + '/bills', data=json.dumps(bill.__dict__))
+        elif r.status_code == 404:
+            print "Creating new Bill %s" %(bill_id)
+            r = requests.post(host + '/bills', data=json.dumps(bill.__dict__))
+
+
 def map_billit():
     offset = 50
     start = 0
@@ -49,87 +71,90 @@ def map_billit():
 def post_projects(projects):
     for p in projects:
         print "loading bill with uuid= %s" %(p['id'])
-        bill = Bill()
-        if 'file' in  p:
-            bill.uid = p['file'] 
-            bill.scrap_id = p['id']
-        if 'title' in p:
-            bill.title = p['title']
-        if 'entry_date' in p:
-            bill.creation_date = p['entry_date']
-        if 'info' in p:
-            info = p['info']
-            if 'origin' in info:
-                bill.initial_chamber = get_chamber(info['origin'])
-                bill.source = info['iniciativa']            
-            #if 'subject' in p['info']:
-            #    bill.title = p['info']['subject']
-            if 'heading' in info:
-                bill.abstract = info['heading']
-            if 'importance'in info:
-                if info['importance'] == "SIN URGENCIA":
-                    bill.urgent = 'Simple'
-                else:
-                    bill.urgent = info['importance']
-        if 'stage' in p:
-            stage = p['stage']
-            if 'stage' in stage:
-                bill.stage = stage['stage']
-            if 'sub_stage' in stage:
-                bill.sub_stage = stage['sub_stage']
-            if 'status' in stage:
-                bill.status = stage['status']
-        bill.authors = []
-        if 'authors' in p:
-            for author in p['authors']:
-                bill.authors.append(author['id']+':'+author['name'])
-        #paperworks
-        bill.paperworks = []
-        if 'paperworks' in p:
-            for paperwork in p['paperworks']:
-                new_paperwork = Paperwork()
-                if 'session' in paperwork:
-                    new_paperwork.session = paperwork['session']
-                if 'date' in paperwork:
-                    new_paperwork.date = paperwork['date']
-                if 'chamber' in paperwork:
-                    new_paperwork.chamber = get_chamber(paperwork['chamber'])
-                if 'stage' in paperwork:
-                    new_paperwork.stage = paperwork['stage']
-                if 'result' in paperwork:
-                    if 'value'in paperwork['result']:
-                        new_paperwork.timeline_status = paperwork['result']['value']
-                bill.paperworks.append(new_paperwork.__dict__)
-        #documents
-        bill.documents = []
-        if 'documents' in p:
-            for doc in p['documents']:
-                document = Document()
-                if 'registration_date' in doc:
-                    document.date = doc['registration_date']#, :type => DateTime
-                if 'type' in doc:
-                    document.type = doc['type']#, :type => String
-                    #TODO: generar link a documento
-                    # document.number#, :type => String
-                    # document.step = doc['']#, :type => String
-                    # document.stage = doc['']#, :type => String
-                    # document.chamber = doc['']#, :type => String
-                    document.link = doc['name']#, :type => String
-                    bill.documents.append(document.__dict__)
-        #Directives
-        bill.directives = []
-        if 'directives' in p:
-            if p['directives']:
-                for d in p['directives']:
-                    directive = Directive()
-                    if 'date' in d:
-                        directive.date = d['date']#, :type => DateTime
-                    if 'result' in d:
-                        directive.step = d['result'] #, :type => String
-                    #directive.stage #, :type => String ?
-                    #directive.link #, :type => String ?
-                    bill.directives.append(directive.__dict__)
-                    
+        bill = create_bill_object(p)
         r = requests.post(host + '/bills', data=json.dumps(bill.__dict__))
         print "------------------------------------------------------------------------------  "
         print r.content
+
+def create_bill_object(p):
+    bill = Bill()
+    bill.scrap_id = p['id']
+    if 'title' in p:
+        bill.title = p['title']
+    if 'entry_date' in p:
+        bill.creation_date = p['entry_date']
+    if 'info' in p:
+        info = p['info']
+        bill.uid = info['file']
+        if 'origin' in info:
+            bill.initial_chamber = get_chamber(info['origin'])
+            bill.source = info['iniciativa']            
+            #if 'subject' in p['info']:
+            #    bill.title = p['info']['subject']
+        if 'heading' in info:
+            bill.abstract = info['heading']
+        if 'importance'in info:
+            if info['importance'] == "SIN URGENCIA":
+                bill.urgent = 'Simple'
+            else:
+                bill.urgent = info['importance']
+    if 'stage' in p:
+        stage = p['stage']
+        if 'stage' in stage:
+            bill.stage = stage['stage']
+        if 'sub_stage' in stage:
+            bill.sub_stage = stage['sub_stage']
+        if 'status' in stage:
+            bill.status = stage['status']
+            bill.authors = []
+    if 'authors' in p:
+        for author in p['authors']:
+            bill.authors.append(str(author['id']) + ':'+author['name'])
+    #paperworks
+    bill.paperworks = []
+    if 'paperworks' in p:
+        for paperwork in p['paperworks']:
+            new_paperwork = Paperwork()
+            if 'session' in paperwork:
+                new_paperwork.session = paperwork['session']
+            if 'date' in paperwork:
+                new_paperwork.date = paperwork['date']
+            if 'chamber' in paperwork:
+                new_paperwork.chamber = get_chamber(paperwork['chamber'])
+            if 'stage' in paperwork:
+                new_paperwork.stage = paperwork['stage']
+            if 'result' in paperwork:
+                if 'value'in paperwork['result']:
+                    new_paperwork.timeline_status = paperwork['result']['value']
+                    bill.paperworks.append(new_paperwork.__dict__)
+    #documents
+    bill.documents = []
+    if 'documents' in p:
+        for doc in p['documents']:
+            document = Document()
+            if 'registration_date' in doc:
+                document.date = doc['registration_date']#, :type => DateTime
+            if 'type' in doc:
+                document.type = doc['type']#, :type => String
+                #TODO: generar link a documento
+                # document.number#, :type => String
+                # document.step = doc['']#, :type => String
+                # document.stage = doc['']#, :type => String
+                # document.chamber = doc['']#, :type => String
+                document.link = doc['name']#, :type => String
+            bill.documents.append(document.__dict__)
+    #Directives
+    bill.directives = []
+    if 'directives' in p:
+        if p['directives']:
+            for d in p['directives']:
+                directive = Directive()
+                if 'date' in d:
+                    directive.date = d['date']#, :type => DateTime
+                if 'result' in d:
+                    directive.step = d['result'] #, :type => String
+                    #directive.stage #, :type => String ?
+                    #directive.link #, :type => String ?
+                bill.directives.append(directive.__dict__)
+    return bill
+

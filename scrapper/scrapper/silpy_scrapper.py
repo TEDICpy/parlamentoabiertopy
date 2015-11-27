@@ -425,10 +425,12 @@ class SilpyHTMLParser(object):
             for itr in inner_tr_list:
                 if len(itr.text.strip()) > 1:
                     info['texts'] = itr.text.strip().split('\n')
-                    #k,v= itr.text.strip().split('\n') #more than one value to unpack
-                    #info[k] = v
-            info['button_id'] = tr.find('button')['id']
+            button = tr.find('button')
+            info['button_id'] = button['id']
             info['link'] = self._extract_file_static_link(tr.find('a'))
+            name = button.parent.text
+            name = name[name.index(button.text):]
+            info['name'] = name.replace(button.text,'').strip()
             result.append(info)
         return result
 
@@ -823,7 +825,7 @@ class SilpyNavigator(object):
             error['msg'] = err.message
             self.mongo_client.save_error(error)                    
 
-    def lsit_bills_by_date(self, start, end):
+    def list_bills_by_date(self, start, end):
         #dates are in dd/mm/yyyy format
         #<select id="formMain:idOrigen2_input" name="formMain:idOrigen2_input">
         #<option value="S" selected="selected">CAMARA DE SENADORES</option>
@@ -856,22 +858,37 @@ class SilpyNavigator(object):
         result = []
         bills = self.parser.parse_bills_list_by_date(self.browser.page_source)
         for bill in bills:
-            self.browser.execute_script(bill['js_call'])
-            #we wait for papge ready + 5 seconds
-            utils.wait_for_document_ready(self.browser)
-            time.sleep(3)
-            #extract bill data
-            bill.update(self.parser.extract_project_details(self.browser.page_source))
-            #press return button
-            #j_idt61:j_idt64
-            reverse = self.browser.current_url[::-1]
-            bill['id'] = reverse[0: reverse.index('F2%')][::-1]
-            bill = self.download_bill_files(bill)
-            result.append(bill)
-            return_button = self.browser.find_element_by_id("j_idt61:j_idt64")
-            return_button.click()
+            try:
+                self.browser.execute_script(bill['js_call'])
+                #we wait for papge ready + 5 seconds
+                utils.wait_for_document_ready(self.browser)
+                time.sleep(3)
+                #extract bill data
+                bill.update(self.parser.extract_project_details(self.browser.page_source))
+                #press return button
+                #j_idt61:j_idt64
+                #print bill
+                print self.browser.current_url
+                reverse = self.browser.current_url[::-1]
+                bill['id'] = reverse[0: reverse.index('F2%')][::-1]
+                print "Bajando archivos del proyecto de ley %s" %(bill['info']['file'])
+                bill = self.download_bill_files(bill)
+                result.append(bill)
+                return_button = self.browser.find_element_by_id("j_idt61:j_idt64")
+                #save updated bills so far
+                return_button.click()
+            except Exception, err:
+                #write to mongodb
+                traceback.print_exc()
+                error = {}
+                error['method'] = 'list_bills_by_date'
+                error['object'] = 'bill'
+                #error['id'] = bill['id']
+                error['msg'] = err.message
+                self.mongo_client.save_error(error)
         return result
-            
+
+        
     #period = 2014-2013
     #origin = D(diputados), S(senadores)
     def list_sessions_by_period(self, origin, period):
@@ -1115,7 +1132,7 @@ class SilpyNavigator(object):
                 time.sleep(1)
                 session_id = self.browser.get_cookie('JSESSIONID')['value']
                 viewstate = self.parser.extract_viewstate(self.browser.page_source)
-                law['filepath'] = utils.download_bill_law(None,
+                law['filepath'] = utils.download_bill_law(law['name'],
                                                          bill['info']['file'],
                                                          viewstate,
                                                          session_id)
@@ -1278,8 +1295,8 @@ class SilpyScrapper(object):
         # 3- create or update "last_bills" collection
         # updated_bill has the last updated date
         # and the bills from that date
-        d = datetime.datetime.utcnow()
         
+        d = datetime.datetime.utcnow()
         updated_bills = self.mongo_client.db.updated_bills.find_one()
         if not updated_bills:
             #create new updated bill from the beginning of this year
@@ -1288,8 +1305,7 @@ class SilpyScrapper(object):
             start = updated_bills['last_update']
         
         end = d.strftime("%d/%m/%Y")
-        
-        bills = self.navigator.lsit_bills_by_date(start, end)
+        bills = self.navigator.list_bills_by_date(start, end)
         updated_bills = {'id': 1}
         updated_bills['last_update'] = end
         last_bills = {}
@@ -1311,9 +1327,7 @@ class SilpyScrapper(object):
                 if 'id' not in project:
                     print 'project id not found'
                 else:
-                    print "id de proyecto " + project['id']
-                    #navigator = SilpyNavigator()
-                    #parser = SilpyHTMLParser()
+                    print "id de proyecto " + project['id']                    
                     self.mongo_client = SilpyMongoClient()
                     project.update(self.navigator.get_project_details(project['id'], no_files))
                     self.mongo_client.upsert_project(project)
