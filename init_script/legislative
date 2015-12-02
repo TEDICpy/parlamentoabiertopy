@@ -1,0 +1,51 @@
+#!/bin/bash
+
+#Init script for legislative and related platforms.
+
+#docker scripts path.
+LEGISLATIVE_HOME=
+
+start() {
+    . $LEGISLATIVE_HOME/local-pa-config.sh
+    echo "Starting Popit container"
+    sh $LEGISLATIVE_HOME/popit/server-run.sh
+    echo "Starting Bill-it container"
+    sh $LEGISLATIVE_HOME/billit/server-run.sh
+    echo "Starting Legislative container"
+    sh $LEGISLATIVE_HOME/legislative/server-run.sh 
+}
+
+stop() {
+    echo "stopping legislative"
+    . $LEGISLATIVE_HOME/local-pa-config.sh
+    sh $LEGISLATIVE_HOME/popit/stop-server.sh
+    sh $LEGISLATIVE_HOME/billit/stop-server.sh
+    sh $LEGISLATIVE_HOME/legislative/stop-server.sh
+}
+
+status() {
+    echo "status"
+    
+}
+
+case "$1" in
+    start)
+	start
+    ;;
+    stop)
+	stop
+    ;;
+    restart)
+	$0 stop
+	sleep 1
+	$0 start
+	;;
+    status)
+#just show docker ps
+	docker ps
+	;;
+    *)
+	#log_success_msg "Usage: /etc/init.d/legislative {start|stop|restart|status}"
+	echo "Usage: /etc/init.d/legislative {start|stop|restart|status}"
+exit 1
+esac
