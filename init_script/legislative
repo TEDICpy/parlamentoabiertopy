@@ -7,23 +7,20 @@ LEGISLATIVE_HOME=
 
 start() {
     . $LEGISLATIVE_HOME/local-pa-config.sh
-
     echo "Starting Popit container"
-    $LEGISLATIVE_HOME/popit/server-run.sh
-
+    sh $LEGISLATIVE_HOME/popit/server-run.sh
     echo "Starting Bill-it container"
-    $LEGISLATIVE_HOME/billit/server-run.sh
-    
+    sh $LEGISLATIVE_HOME/billit/server-run.sh
     echo "Starting Legislative container"
-    $LEGISLATIVE_HOME/legislative/server-run.sh 
+    sh $LEGISLATIVE_HOME/legislative/server-run.sh 
 }
 
 stop() {
     echo "stopping legislative"
     . $LEGISLATIVE_HOME/local-pa-config.sh
-    $LEGISLATIVE_HOME/popit/stop-server.sh
-    $LEGISLATIVE_HOME/billit/stop-server.sh
-    $LEGISLATIVE_HOME/legislative/stop-server.sh
+    sh $LEGISLATIVE_HOME/popit/stop-server.sh
+    sh $LEGISLATIVE_HOME/billit/stop-server.sh
+    sh $LEGISLATIVE_HOME/legislative/stop-server.sh
 }
 
 status() {
