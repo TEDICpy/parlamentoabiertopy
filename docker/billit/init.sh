@@ -1,6 +1,3 @@
-#
-## 
-
-cd $billit && bundle exec rake sunspot:solr:start && rails server --port 8002
+cd $BILLIT && bundle exec rake sunspot:solr:start && rails server --port 8002
 
 
