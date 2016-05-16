@@ -1,36 +1,34 @@
-FROM ubuntu:14.04
-MAINTAINER Ivan Florentin <ivan@sinergetica.com>
+FROM ubuntu:16.04
+MAINTAINER Lupa <lupa@tedic.org>
 
+ENV DEBIAN_FRONTEND noninteractive
 ENV LANG es_PY.UTF-8
 ENV LANGUAGE es_PY.UTF-8:es
-ENV src /src
-ENV legislative /src/legislative
+ENV SRC /src
+ENV LEG /src/legislative
+ENV REPO https://github.com/TEDICpy/legislative.git
 
-RUN touch /legislative
-RUN mkdir $src
+RUN mkdir -p $LEG
 
-RUN apt-get update
-RUN apt-get upgrade -y
+RUN apt-get update && \
+	&& apt-get upgrade -y \
+	&& apt-get install -y python-software-properties wget apt-file mc git vim \
+                   imagemagick sqlite3 libmysqlclient-dev libmagick++-dev ruby2.0 ruby2.0-dev \
+                   rails libsqlite3-dev
+WORKDIR $SRC
+RUN git clone $REPO
 
-RUN apt-get install -y python-software-properties wget apt-file mc git vim \
-  imagemagick sqlite3 libmysqlclient-dev libmagick++-dev ruby2.0 ruby2.0-dev \
-  rails libsqlite3-dev
+RUN rm /usr/bin/ruby \
+	&& ln -s /usr/bin/ruby2.0 /usr/bin/ruby \
+	&& gem install mysql2 -v '0.3.18'
 
-RUN touch /root/07
+WORKDIR $LEG
+RUN bundle install
 
-RUN cd $src && git clone https://github.com/ivanflorentin/legislative.git
-
-RUN rm /usr/bin/ruby
-RUN ln -s /usr/bin/ruby2.0 /usr/bin/ruby
-RUN gem install mysql2 -v '0.3.18'
-RUN cd $legislative && bundle install
-
-#RUN touch /legislative.01
-
-ADD init.sh $legislative/
-ADD database.yml $legislative/config/
-ADD legislative.yml $legislative/config/
+ADD init.sh $LEG/
+ADD database.yml $LEG/config/
+ADD legislative.yml $LEG/config/
 ADD hosts /etc/
-RUN cd $legislative && sh setup.sh
+RUN sh setup.sh
 
-#CMD sh $legislative/init.sh
+CMD sh $LEG/init.sh
