@@ -67,8 +67,11 @@ class DiputadosScrapper(object):
         #return as plain text
         cv = None
         if len(tables) > 0:
-             cv = str(tables[1])
-        return cv
+            cv = tables[1]
+            if cv.img:
+                cv.img.decompose()
+            cv = str(cv)
+        return url
 
     #deprecated: extracted from silpy
     # def get_member_committees(self, member_id):

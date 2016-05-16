@@ -64,6 +64,8 @@ class SenadoresParser(object):
         projects = []
         soup = BeautifulSoup(data)
         cv = soup.find(id = '2-1-curriculum-vitae')#save as chunk of data?
+        if cv.img:
+            cv.img.decompose()
         return str(cv)
         
     def parse_senator_committees(self, html):      
@@ -190,7 +192,7 @@ class SenadoresScrapper(object):
         cv = self.parser.parse_senator_info(data)
         senator.update({'committees': committees,
                         'rulings': dictamenes,
-                        'cv': cv})
+                        'cv': url})
         return senator
 
     def get_all_articles(self):
