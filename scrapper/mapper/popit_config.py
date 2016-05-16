@@ -14,7 +14,7 @@ password = "asdqwe123"
 #-----
 
 # Esto se genera en el sitio de popit
-api_key = '32a3f776d68b9bc03b4befdb290c9dc85e7d14f4'
+api_key = '86d53244257d47b663a1cfa900f25571233f77c0'
 #------
 mongo_host = 'localhost'
 mongo_port = 27017

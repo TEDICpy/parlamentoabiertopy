@@ -5,6 +5,6 @@ sleep 10
 /etc/init.d/elasticsearch start
 sleep 3
 
-cd $popit && npm start
+cd $popit && npm start > popit.log
 
 

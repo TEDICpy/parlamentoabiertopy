@@ -8,7 +8,7 @@ mg_client = pymongo.MongoClient(host='localhost', port=27017)
 mdb = mg_client.silpy01
 
 total_downloaded = 0
-base_dir = ''#base dir where all files should be located
+base_dir = '/home/ivan/devel/parlamentoabiertopy/scrapper/'#base dir where all files should be located
 
 def download_from_static_link(link, dir, filename):
     if not os.path.exists(base_dir+dir):
