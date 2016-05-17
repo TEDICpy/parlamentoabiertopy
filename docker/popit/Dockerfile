@@ -1,10 +1,10 @@
-FROM ubuntu:16.04
+FROM ubuntu:14.04
 MAINTAINER Lupa <admin@tedic.org>
 
 ENV DEBIAN_FRONTEND noninteractive
 ENV DATA /data
 ENV SRC /src
-ENV POPIT $SRC/popit
+ENV POPIT /src/popit
 ENV REPO https://github.com/mysociety/popit
 
 # Sistem update and minimum needed packages
@@ -43,9 +43,10 @@ RUN gem install sass --version=3.2.14 --no-rdoc --no-ri \
 RUN make css
 
 #-- Config files for Parlamentoabierto.org.py
-ADD init.sh $POPIT/
+COPY init.sh $POPIT/
 ADD default.js $POPIT/config/
 
 #-- Run it!
-CMD /bin/bash $POPIT/init.sh
+#CMD ["/src/popit/init.sh"]
+CMD ["/bin/bash"]
 

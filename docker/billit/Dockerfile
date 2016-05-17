@@ -1,4 +1,4 @@
-FROM ubuntu:15.10
+FROM ubuntu:14.04
 MAINTAINER Lupa <admin@tedic.org>
 
 ENV DEBIAN_FRONTEND noninteractive
@@ -35,4 +35,4 @@ RUN cd $BILLIT && magic_encoding
 
 ADD init.sh $BILLIT/
 
-CMD /bin/bash $BILLIT/init.sh
+CMD ["$BILLIT/init.sh"]

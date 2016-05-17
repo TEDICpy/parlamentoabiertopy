@@ -1,33 +1,29 @@
 padata:
-  # ver de cambiar esto x una img mas pequenia
-  image: ubuntu:16.04
+  build: data/.
   volumes:
     - pasrc:/src
     - painit:/init
 popit:
   build: popit/.
-  #env_file: papopit.env
-  #volumes:
-    #- $PA_ESEARCH_LOCAL:$PA_ESEASRCH_CONTAINER
   volumes_from:
     - padata
   ports:
     - "8000:8000"
   #links:
   #  - wpdb
-billit:
-  build: billit/.
-  volumes_from:
-    - padata
-  ports:
-    - "8002:8002"
-legislative:
-  build: legislative/.
-  #volumes: 
-    #- $PA_BILLIT_REP:$PA_BILLIT_GEM 
-    #- $PA_POPIT_REP:$PA_POPIT_GEM
-  volumes_from:
-    - padata
-  ports:
-    - "5000:5000"
-
+#billit:
+#  build: billit/.
+#  volumes_from:
+#    - padata
+#  ports:
+#    - "8002:8002"
+##legislative:
+#  build: legislative/.
+#  #volumes: 
+#    #- $PA_BILLIT_REP:$PA_BILLIT_GEM 
+#    #- $PA_POPIT_REP:$PA_POPIT_GEM
+#  volumes_from:
+#    - padata
+#  ports:
+#    - "5000:5000"
+#

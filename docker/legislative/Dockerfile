@@ -1,4 +1,4 @@
-FROM ubuntu:16.04
+FROM ubuntu:14.04
 MAINTAINER Lupa <lupa@tedic.org>
 
 ENV DEBIAN_FRONTEND noninteractive
@@ -31,4 +31,4 @@ ADD legislative.yml $LEG/config/
 ADD hosts /etc/
 RUN /bin/bash setup.sh
 
-CMD /bin/bash $LEG/init.sh
+CMD ["$LEG/init.sh"]
