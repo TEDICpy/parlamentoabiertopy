@@ -28,4 +28,6 @@ legislative:
     #- $PA_POPIT_REP:$PA_POPIT_GEM
   volumes_from:
     - padata
+  ports:
+    - "5000:5000"
 

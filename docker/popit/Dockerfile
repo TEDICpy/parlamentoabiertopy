@@ -47,5 +47,5 @@ ADD init.sh $POPIT/
 ADD default.js $POPIT/config/
 
 #-- Run it!
-CMD sh $POPIT/init.sh
+CMD /bin/bash $POPIT/init.sh
 

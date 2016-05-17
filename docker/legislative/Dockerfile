@@ -29,6 +29,6 @@ ADD init.sh $LEG/
 ADD database.yml $LEG/config/
 ADD legislative.yml $LEG/config/
 ADD hosts /etc/
-RUN sh setup.sh
+RUN /bin/bash setup.sh
 
-CMD sh $LEG/init.sh
+CMD /bin/bash $LEG/init.sh
