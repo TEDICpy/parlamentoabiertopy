@@ -1,10 +1,12 @@
 FROM ubuntu:14.04
 MAINTAINER Ivan Florentin <ivan@sinergetica.com>
+
+ENV DEBIAN_FRONTEND noninteractive
 ENV data /data
 ENV src /src
 ENV popit $src/popit
-ENV repo https://github.com/mysociety/popit 
-
+ENV repo https://github.com/mysociety/popit
+ 
 # Sistem update and minimum needed packages
 RUN apt-get update \
 	&& apt-get upgrade -y
@@ -19,7 +21,7 @@ RUN wget -O - http://packages.elasticsearch.org/GPG-KEY-elasticsearch | sudo apt
 RUN echo 'deb http://packages.elasticsearch.org/elasticsearch/0.90/debian stable main' | \
     sudo tee /etc/apt/sources.list.d/elasticsearch.list
 
-RUN add-apt-repository ppa:chris-lea/node.js \
+RUN add-apt-repository -y ppa:chris-lea/node.js \
 	&& apt-get update
 
 #-- Instalation of dependencies
