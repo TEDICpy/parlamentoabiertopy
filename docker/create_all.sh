@@ -19,10 +19,11 @@ cd ../billit/
 #./create_container.sh
 
 
-
-echo "Creating WriteIt..."
-cd ../writeit/
-./build_image.sh
+#comento ya que no estamos 
+#usando esta instancia
+#echo "Creating WriteIt..."
+#cd ../writeit/
+#./build_image.sh
 #./create_container.sh
 
 
