@@ -3,6 +3,7 @@ MAINTAINER Ivan Florentin <ivan@sinergetica.com>
 ENV data /data
 ENV src /src
 ENV popit $src/popit
+ENV repo https://github.com/mysociety/popit 
 
 # Sistem update and minimum needed packages
 RUN touch /popit.01
@@ -28,8 +29,9 @@ RUN apt-get install -y python g++ make nodejs mongodb-org openjdk-6-jre elastics
     ruby1.9.1 ruby1.9.1-dev  git graphicsmagick unzip sendmail
 
 #-- Official  PopIt Repo
-RUN mkdir $src
-RUN cd $src && git clone https://github.com/mysociety/popit 
+RUN mkdir -p $src
+WORKDIR $src
+RUN git clone $repo
 
 #-- Local correction, Doesn't work without it
 ADD print.scss $popit/public/sass/
@@ -39,15 +41,13 @@ RUN cd $popit && make node-modules
 RUN cp $popit/config/development.js-example $popit/config/development.js
 RUN gem install sass --version=3.2.14 --no-rdoc --no-ri
 RUN gem install compass --version=0.12.2 --no-rdoc --no-ri
-#RUN mkdir /data && mkdir /data/db
+RUN mkdir -p /data/db
 RUN cd $popit && make css
 
 RUN touch /popit.01c
 #-- Config files for Parlamentoabierto.org.py
 ADD init.sh $popit/
 ADD default.js $popit/config/
-
-#VOLUME ["/src"]
 
 #-- Run it!
 CMD sh $popit/init.sh
