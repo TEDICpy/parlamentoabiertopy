@@ -20,7 +20,7 @@ RUN ruby-switch --set ruby2.1
 RUN gem install magic_encoding bundler 
 RUN gem install nio4r -v '1.0.0'
 RUN gem install bcrypt -v '3.1.7'
-#RUN gem install bundler
+RUN gem install bundler
 
 
 RUN mkdir $src
