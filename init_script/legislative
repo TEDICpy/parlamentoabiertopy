@@ -3,7 +3,7 @@
 #Init script for legislative and related platforms.
 
 #docker scripts path.
-LEGISLATIVE_HOME=
+LEGISLATIVE_HOME=/home/lupa/devel/devpa/parlamentoabiertopy/docker
 
 start() {
     . $LEGISLATIVE_HOME/local-pa-config.sh

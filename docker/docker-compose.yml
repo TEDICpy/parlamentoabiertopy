@@ -1,22 +1,23 @@
-padata:
-  build: data/.
-  volumes:
-    - pasrc:/src
-    - painit:/init
+#padata:
+#  build: data/.
+#  volumes:
+#    - padata:/data
+#    - pasrc:/src
+#    - painit:/init
 popit:
   build: popit/.
-  volumes_from:
-    - padata
+  volumes:
+    - popitdata:/data
+    - popitsrc:/src
   ports:
     - "8000:8000"
-  #links:
-  #  - wpdb
-#billit:
-#  build: billit/.
-#  volumes_from:
-#    - padata
-#  ports:
-#    - "8002:8002"
+billit:
+  build: billit/.
+  volumes:
+    - billitdata:/data
+    - billitsrc:/src
+  ports:
+    - "8002:8002"
 ##legislative:
 #  build: legislative/.
 #  #volumes: 

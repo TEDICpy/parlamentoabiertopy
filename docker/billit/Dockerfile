@@ -20,16 +20,20 @@ RUN gem install magic_encoding bundler \
 	&& gem install nio4r -v '1.0.0' \
 	&& gem install bcrypt -v '3.1.7'
 
+# Bajo el codigo
 RUN mkdir -p $BILLIT
 WORKDIR $SRC
 RUN git clone $REPO
+
+# Instalo
 WORKDIR $BILLIT
 RUN bundle install
 
-RUN cp $BILLIT/config.ru.example $BILLIT/config.ru
-RUN cp $BILLIT/config/sunspot.yml.example $BILLIT/config/sunspot.yml
-RUN cp $BILLIT/config/mongoid.yml.example $BILLIT/config/mongoid.yml
-RUN cp $BILLIT/config/hateoas.yml.example $BILLIT/config/hateoas.yml
+# Copio los achivos de configuracion
+RUN cp config.ru.example config.ru
+RUN cp config/sunspot.yml.example config/sunspot.yml
+RUN cp config/mongoid.yml.example config/mongoid.yml
+RUN cp config/hateoas.yml.example config/hateoas.yml
 
 RUN cd $BILLIT && magic_encoding
 
