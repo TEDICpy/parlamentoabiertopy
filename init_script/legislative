@@ -9,6 +9,9 @@ start() {
     . $LEGISLATIVE_HOME/local-pa-config.sh
     echo "Starting Popit container"
     sh $LEGISLATIVE_HOME/popit/server-run.sh
+    sleep 1
+    # Inicio watchdog debido a la muerte repentina de popit y la falta de soporte
+    sh $LEGISLATIVE_HOME/popit_watchdog.sh
     echo "Starting Bill-it container"
     sh $LEGISLATIVE_HOME/billit/server-run.sh
     echo "Starting Legislative container"
