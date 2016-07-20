@@ -15,9 +15,10 @@ start() {
     echo "Starting Legislative container"
     sh $LEGISLATIVE_HOME/legislative/server-run.sh
     sleep 1
-    # Watchdog para popit y legislative
+    # Watchdogs
     sh $LEGISLATIVE_HOME/popit_watchdog.sh &
     sh $LEGISLATIVE_HOME/legislative_watchdog.sh &
+    sh $LEGISLATIVE_HOME/billit_watchdog.sh &
 }
 
 stop() {
@@ -26,6 +27,7 @@ stop() {
     # Mato al watchdog para que no vuelva a iniciar sinquerer
     pkill -f popit_watchdog.sh
     pkill -f legislative_watchdog.sh
+    pkill -f billit_watchdog.sh
     sleep 1
     sh $LEGISLATIVE_HOME/popit/stop-server.sh
     sleep 1
