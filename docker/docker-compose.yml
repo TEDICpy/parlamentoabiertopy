@@ -1,23 +1,33 @@
-#padata:
-#  build: data/.
-#  volumes:
-#    - padata:/data
-#    - pasrc:/src
-#    - painit:/init
+pamongo:
+  image: mongo
+  volumes:
+    - pamongodata:/data 
+  ports:
+    - "27017:27017"
+paelastic:
+  image: elasticsearch
+  volumes:
+    - paelasticdata:/usr/share/elasticsearch/data
+  ports:
+    - "9200:9200"
+    - "9300:9300"
 popit:
   build: popit/.
   volumes:
-    - popitdata:/data
-    - popitsrc:/src
+    - papopitsrc:/src
   ports:
     - "8000:8000"
-billit:
-  build: billit/.
-  volumes:
-    - billitdata:/data
-    - billitsrc:/src
-  ports:
-    - "8002:8002"
+    - "3000:3000"
+  links:
+    - pamongo
+    - paelastic
+#billit:
+#  build: billit/.
+#  volumes:
+#    - billitdata:/data
+#    - billitsrc:/src
+#  ports:
+#    - "8002:8002"
 ##legislative:
 #  build: legislative/.
 #  #volumes: 

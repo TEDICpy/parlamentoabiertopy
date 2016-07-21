@@ -4,7 +4,7 @@ module.exports = {
 
     // by default use the compressed assets - this will apply to the test suite 
     // too
-    public_dir: 'public-production',
+    public_dir: 'public',
     docs_dir:   path.normalize(__dirname + '/../docs'),
 
     show_dev_site_warning: false,
@@ -16,7 +16,7 @@ module.exports = {
     force_https: false,
 
     logging: {
-      log_level:      'info',
+      log_level: 'info',
       colorize: false,
     },
 
@@ -26,20 +26,20 @@ module.exports = {
 
     hosting_server: {
       // *.127.0.0.1.xip.io points to 127.0.0.1
-        host:       'popit.parlamentoabierto.org.py',
-        base_url:   'http://popit.parlamentoabierto.org.py:8000',
-        email_from: 'PopIt <popit@parlamentoabierto.org.py>',
+        host:       'localhost',
+        base_url:   'http://localhost:8000',
+        email_from: 'PopIt <localhost>',
     },
     instance_server: {
         // This is used to create the url to the instance site. '%s' is
         // replaced with the instance name.
-        base_url_format: "http://%s.popit.parlamentoabierto.org.py:8000",
+        base_url_format: "http://%s.localhost:8000",
         cookie_secret: 'hue2flu3rdle123',
-        cookie_domain: 'parlamentoabierto.org.py',
+        cookie_domain: 'localhost',
         files_dir:     path.normalize(__dirname + '/../../popit_files'),
     },
     MongoDB: {
-        host:         'localhost',
+        host:         'docker_pamongo_1',
         port:         27017,
         master_name:  '_master',
         session_name: '_session',
