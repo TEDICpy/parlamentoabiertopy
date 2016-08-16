@@ -10,7 +10,7 @@ ENV REPO https://github.com/TEDICpy/legislative.git
 
 RUN mkdir -p $LEG
 
-RUN apt-get update && \
+RUN apt-get update \
 	&& apt-get upgrade -y \
 	&& apt-get install -y python-software-properties wget apt-file mc git vim \
                    imagemagick sqlite3 libmysqlclient-dev libmagick++-dev ruby2.0 ruby2.0-dev \
