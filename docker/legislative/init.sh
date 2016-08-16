@@ -1,2 +1,2 @@
-cd $LEG && rails server --port 5000
+cd /src/legislative && rails server --port 5000
 
